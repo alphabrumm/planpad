@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="utf-8">
+    <title>PlanPad</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#F3F5F9" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#151922" media="(prefers-color-scheme: dark)">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="PlanPad">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <link rel="manifest" href="./planpad.webmanifest">
+    <link rel="icon" href="./planpad-icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="./planpad-icon-180.png">
+    <script>
+        // Theme so früh wie möglich setzen, damit nichts aufblitzt
+        try {
+            var t = localStorage.getItem("planpad.theme") || "auto";
+            document.documentElement.dataset.theme = t;
+            document.documentElement.dataset.effective =
+                t === "auto" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : t;
+        } catch (e) { }
+    </script>
+    <link rel="stylesheet" href="planpad.css?v=1.33.0">
+</head>
+
+<body>
+    <div id="app" class="pp-app">
+
+        <!-- ===== Kopfzeile ===== -->
+        <header class="pp-topbar">
+            <!-- linke Spalte: so breit wie die Seitenleiste darunter -->
+            <div class="pp-topbar-left">
+                <button class="pp-iconbtn" id="menu-btn" aria-label="Menü öffnen" data-icon="menu"></button>
+                <button class="pp-iconbtn" id="sidebar-btn" aria-label="Klassenliste ein- oder ausblenden" title="Klassenliste ein-/ausblenden" data-icon="sidebar"></button>
+                <button class="pp-plan" id="plan-btn" aria-label="Klasse umbenennen" title="Klasse umbenennen">
+                    <span class="pp-plan-name" id="plan-name">Meine Klasse</span>
+                    <span class="pp-plan-state" id="plan-state"></span>
+                </button>
+            </div>
+            <!-- rechte Spalte: bündig mit dem Raum darunter -->
+            <div class="pp-topbar-right">
+                <div class="pp-seating-tabs" id="seating-tabs" role="tablist" aria-label="Sitzpläne dieser Klasse"></div>
+                <div class="pp-seating-mobile">
+                    <select id="seating-select" aria-label="Sitzplan wählen"></select>
+                    <button class="pp-iconbtn pp-seating-action" id="seating-action" aria-label="Sitzplan umbenennen oder löschen"></button>
+                </div>
+                <button class="pp-addseat" id="add-seating-btn" title="Weiteren Sitzplan für diese Klasse anlegen" aria-label="Sitzplan ergänzen">
+                    <span data-icon="plus"></span><span class="pp-addseat-label">Sitzplan ergänzen</span>
+                </button>
+                <div class="pp-topbar-spacer"></div>
+                <div class="pp-toolgroup">
+                    <button class="pp-iconbtn" id="undo-btn" aria-label="Rückgängig" title="Rückgängig" data-icon="undo"></button>
+                    <button class="pp-iconbtn" id="redo-btn" aria-label="Wiederholen" title="Wiederholen" data-icon="redo"></button>
+                    <button class="pp-iconbtn" id="save-btn" aria-label="Klasse als Datei sichern" title="Klasse als Datei sichern" data-icon="save"><span class="pp-dot"></span></button>
+                </div>
+            </div>
+        </header>
+
+        <main class="pp-main">
+
+            <!-- ===== Klasse ===== -->
+            <section class="pp-pane pp-pane-class" aria-label="Klasse">
+                <div class="pp-pane-head">
+                    <h2>Klasse</h2>
+                    <span class="pp-count" id="student-count"></span>
+                    <div class="pp-topbar-spacer"></div>
+                    <button class="pp-textbtn" id="edit-names-btn">Namen bearbeiten</button>
+                </div>
+
+                <div class="pp-names" id="names-editor">
+                    <textarea id="student-list" placeholder="Nachname, Vorname&#10;Nachname, Vorname&#10;… (ein Kind pro Zeile)" spellcheck="false" autocapitalize="words"></textarea>
+                    <div class="pp-names-foot">
+                        <span class="pp-hint">Ein Kind pro Zeile: „Nachname, Vorname“. Auf Kärtchen und Tischen steht der Vorname, bei gleichen Vornamen mit Kürzel („Max Kra.“).</span>
+                        <button class="pp-btn pp-btn-small" id="names-done-btn">Fertig</button>
+                    </div>
+                </div>
+
+                <div class="pp-pane-scroll">
+                    <h3 class="pp-section pp-tray-head" id="tray-head">Sitzplätze</h3>
+                    <div class="input-area">
+                        <!-- Stand („x von y SuS haben einen Platz“) und „Schülertische anlegen“ -->
+                    </div>
+                    <div class="student-list pp-allpills" id="all-pills" hidden></div>
+                    <button class="pp-textbtn pp-allpills-btn" id="toggle-pills" aria-expanded="false" hidden>Kärtchen einblenden …</button>
+                    <p class="pp-hint pp-drag-hint" id="drag-hint">Auf einen freien Tisch ziehen · antippen für Foto.</p>
+                    <p class="pp-hint" id="tray-mix-hint" hidden>Oder „Mix“ – dann bekommen alle automatisch einen Platz.</p>
+                    <p class="pp-hint" id="swap-hint" hidden>Umsetzen: zwei Tische nacheinander antippen.</p>
+                    <div class="pp-mixrow">
+                        <button class="pp-run" id="shuffle-btn" title="Zufällig verteilen – beachtet alle Regeln">
+                            <span data-icon="dice"></span><span class="pp-run-label">Mix</span>
+                        </button>
+                        <button class="pp-demix" id="demix-btn" title="Sitzordnung von vor dem Mischen wiederherstellen" disabled>
+                            <span data-icon="undo"></span><span>Demix</span>
+                        </button>
+                    </div>
+
+                    <h3 class="pp-section">Klassenfoto</h3>
+                    <button class="pp-chipbtn pp-photo-btn" id="class-photo"><span data-icon="camera"></span>Gesichter zuordnen …</button>
+                    <button class="pp-chipbtn pp-photo-btn pp-learn-btn" id="learn-names" disabled title="Erst Fotos zuordnen"><span data-icon="learn"></span><span>Namen lernen</span><span class="pp-learn-score" id="learn-score" title="Rekord: meiste Gesichter ohne Fehler hintereinander"></span></button>
+
+                    <h3 class="pp-section">Regeln</h3>
+                    <div class="pp-rule-buttons" id="rule-buttons">
+                        <button class="pp-chipbtn pp-sep" id="separate-students"><span data-icon="separate"></span>Trennen</button>
+                        <button class="pp-chipbtn pp-cpl" id="couple-students"><span data-icon="link"></span>Koppeln</button>
+                    </div>
+                    <div class="pp-selectbar" id="select-bar" hidden>
+                        <span id="select-text"></span>
+                        <div class="pp-selectbar-buttons">
+                            <button class="pp-btn pp-btn-small" id="cancel-selection">Abbrechen</button>
+                            <button class="pp-btn pp-btn-small pp-btn-primary" id="finish-separation">Fertig</button>
+                        </div>
+                    </div>
+                    <ul class="pp-rules" id="rule-list"></ul>
+                    <button class="pp-btn pp-btn-small pp-fixbtn" id="fix-conflicts" title="Nur so viele SuS umsetzen, wie für die Regeln nötig"><span data-icon="check"></span>Konflikte lösen</button>
+                </div>
+                <div class="pp-help-foot pp-help-groups"><button class="pp-help-btn" id="help-btn-groups" data-help><span data-icon="book"></span><span>So verwendest Du PlanPad</span></button></div>
+
+                <!-- Notizansicht (ersetzt die Namensleiste, solange „Notizen“ an ist) -->
+                <div class="pp-notes" id="notes-view" hidden>
+                    <div class="pp-pane-head">
+                        <h2 id="notes-title">Notizen</h2>
+                        <span class="pp-count" id="notes-count"></span>
+                    </div>
+                    <div class="pp-notes-scroll" id="notes-body"></div>
+                    <div class="pp-help-foot"><button class="pp-help-btn" id="help-btn-notes" data-help><span data-icon="book"></span><span>So verwendest Du PlanPad</span></button></div>
+                </div>
+            </section>
+
+            <!-- ===== Raum ===== -->
+            <section class="pp-pane pp-pane-room" aria-label="Raum">
+                <div class="pp-roombar">
+                    <div class="pp-layout-picker">
+                        <button class="pp-layout-btn" id="layout-btn" aria-haspopup="true" aria-expanded="false" title="Layout wählen">
+                            <span class="pp-layout-btn-preview" id="layout-btn-preview"></span>
+                            <span class="pp-layout-btn-text"><small>Layouts</small><b id="layout-label">wählen</b></span>
+                            <span data-icon="chevron"></span>
+                        </button>
+                        <div class="pp-layout-menu" id="layout-menu" role="menu" aria-label="Layout wählen" hidden></div>
+                    </div>
+                    <div class="pp-table-tools">
+                        <button class="pp-iconbtn" id="add-square" title="Tisch hinzufügen" aria-label="Tisch hinzufügen" data-icon="plus"></button>
+                        <button class="pp-iconbtn" id="clear-seats" title="Alle Tische leeren (Kinder zurück in „Sitzplätze“)" aria-label="Alle Tische von Schüler:innen lösen" data-icon="broom"></button>
+                        <button class="pp-iconbtn" id="clear-tables" title="Alle Tische entfernen" aria-label="Alle Tische entfernen" data-icon="trash"></button>
+                    </div>
+                    <div class="pp-roombar-tools">
+                        <button class="pp-iconbtn pp-togglebtn" id="distribute" aria-pressed="false" title="In Reihenfolge sortieren (an/aus)" aria-label="In Reihenfolge sortieren" data-icon="abcorder"></button>
+                        <div class="pp-view-switch" role="group" aria-label="Ansicht der linken Leiste">
+                            <button id="view-groups" aria-pressed="false" aria-label="Gruppen" title="Gruppen: Namen, Fotos, Regeln, Umsetzen" data-icon="users"></button>
+                            <button id="view-notes" aria-pressed="true" aria-label="Notizen" title="Notizen" data-icon="note"></button>
+                        </div>
+                    </div>
+                    <div class="pp-zoom" role="group" aria-label="Ansicht">
+                        <button class="pp-iconbtn" id="zoom-out" title="Verkleinern" aria-label="Verkleinern" data-icon="zoomOut"></button>
+                        <button class="pp-zoom-fit" id="zoom-fit" title="Sitzplan einpassen" aria-label="Sitzplan einpassen"><span data-icon="fit"></span><span id="zoom-label">100 %</span></button>
+                        <button class="pp-iconbtn" id="zoom-in" title="Vergrößern" aria-label="Vergrößern" data-icon="zoomIn"></button>
+                        <button class="pp-iconbtn" id="present-btn" title="Präsentieren (Vollbild)" aria-label="Präsentieren" data-icon="present"></button>
+                    </div>
+                </div>
+                <div class="pp-room-scroll" id="room-scroll">
+                    <div class="pp-room-sizer" id="room-sizer">
+                        <div class="classroom" id="classroom">
+                            <div class="teacher">Lehrkraft</div>
+                        </div>
+                    </div>
+                </div>
+                <button class="pp-present-exit" id="present-exit" aria-label="Präsentation beenden" title="Präsentation beenden" data-icon="close"></button>
+            </section>
+        </main>
+
+        <!-- ===== Menü (Schublade) ===== -->
+        <div class="pp-drawer-backdrop" id="drawer-backdrop"></div>
+        <aside class="pp-drawer" id="drawer" aria-label="Menü" inert>
+            <div class="pp-drawer-head">
+                <div class="pp-brand"><img class="pp-brand-mark" src="planpad-icon.svg" alt="">PlanPad</div>
+                <button class="pp-iconbtn" id="drawer-close" aria-label="Menü schließen" data-icon="close"></button>
+            </div>
+            <div class="pp-drawer-body">
+                <h2>Klassen</h2>
+                <div class="pp-menu-actions">
+                    <button id="new-plan-btn"><span data-icon="plus"></span><span>Klasse anlegen</span></button>
+                    <button id="new-plan-csv-btn"><span data-icon="listImport"></span><span>Klasse als Liste importieren</span></button>
+                    <button id="duplicate-plan-btn"><span data-icon="copy"></span><span>Klasse duplizieren</span></button>
+                    <button id="demo-btn"><span data-icon="learn"></span><span>Demoklasse laden</span></button>
+                    <button id="import"><span data-icon="open"></span><span>Klassen aus Datei öffnen</span></button>
+                    <button id="export-current"><span data-icon="save"></span><span>Klasse als Datei sichern</span></button>
+                    <button id="export"><span data-icon="share"></span><span>Alle Klassen als Datei sichern</span></button>
+                </div>
+                <ul class="pp-planlist" id="plan-list"></ul>
+                <div class="pp-menu-actions">
+                    <button id="delete-all-btn" class="is-danger"><span data-icon="trash"></span><span>Alle Klassen, Notizen und Fotos löschen …</span></button>
+                </div>
+
+                <h2>Fotos</h2>
+                <div class="pp-setting-row">
+                    <span>Fotos auf den Tischen</span>
+                    <div class="pp-segmented pp-segmented-small" id="photo-switch">
+                        <button data-photos="on">An</button>
+                        <button data-photos="off">Aus</button>
+                    </div>
+                </div>
+                <div class="pp-menu-actions">
+                    <button id="clear-faces" class="is-danger"><span data-icon="trash"></span><span>Fotos dieser Klasse löschen</span></button>
+                </div>
+
+                <h2>Drucken</h2>
+                <div class="pp-menu-actions">
+                    <button id="print-btn"><span data-icon="printer"></span><span>Sitzplan drucken / PDF …</span></button>
+                </div>
+
+                <h2>Darstellung</h2>
+                <div class="pp-segmented" id="theme-switch">
+                    <button data-theme-choice="light"><span data-icon="sun"></span><span>Hell</span></button>
+                    <button data-theme-choice="dark"><span data-icon="moon"></span><span>Dunkel</span></button>
+                    <button data-theme-choice="auto"><span data-icon="auto"></span><span>System</span></button>
+                </div>
+
+                <h2>Über PlanPad</h2>
+                <p class="pp-about">PlanPad erstellt Sitzpläne direkt im Browser. Jede Klasse kann mehrere Sitzpläne haben
+                    (z. B. „Normal“, „Gruppenarbeit“, „Prüfung“) – Notizen und Fotos gehören zu den SuS und gelten in allen
+                    Sitzplänen der Klasse. Alles bleibt ausschließlich auf diesem Gerät – es gibt keinen Server, keine Cloud und keine automatische
+                    Gesichtserkennung. <b>Regelmäßig sichern:</b> „Alle Klassen als Datei sichern“ – PlanPad erinnert einmal pro Woche daran. Fotos und Notizen nur auf Wunsch, optional mit Passwort verschlüsselt.</p>
+                <p class="pp-about"><b>Schuljahresende:</b> Alle Klassen, Fotos, Notizen und Sicherungsdateien müssen am Ende des Schuljahres gelöscht werden. PlanPad erinnert einmal pro Schuljahr daran.</p>
+                <p class="pp-about">Tipp fürs iPad: Teilen → „Zum Home-Bildschirm“. Dann läuft PlanPad auch offline,
+                    und Safari löscht die gespeicherten Daten nicht nach längerer Nichtnutzung.</p>
+                <p class="pp-version">Version 1.33.0 · Schrift: Atkinson Hyperlegible (SIL OFL)</p>
+            </div>
+        </aside>
+    </div>
+
+    <script src="planpad.js?v=1.33.0"></script>
+</body>
+
+</html>
