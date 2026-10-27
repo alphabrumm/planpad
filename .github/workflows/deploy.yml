@@ -1,0 +1,34 @@
+# PlanPad per FTP auf plan.pandapy.de veröffentlichen.
+# Start: Versionsmarke pushen (z. B. v1.36.0) – oder in GitHub unter „Actions“ → „Run workflow“.
+# Secrets: FTP_SERVER, FTP_USERNAME, FTP_PASSWORD, optional FTP_DIR (Zielordner, mit / am Ende).
+# Optionale Variable FTP_PROTOCOL: ftps (Standard, verschlüsselt) oder ftp.
+name: Deploy plan.pandapy.de
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+concurrency:
+  group: ftp-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Upload per FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          protocol: ${{ vars.FTP_PROTOCOL || 'ftps' }}
+          server-dir: ${{ secrets.FTP_DIR || './' }}
+          exclude: |
+            **/.git*
+            **/.git*/**
+            .github/**
+            .nojekyll
