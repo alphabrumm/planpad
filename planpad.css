@@ -1036,8 +1036,8 @@ button { -webkit-user-select: none; user-select: none; }
     left: 50%;
     bottom: 16px;
     transform: translateX(-50%);
-    width: 240px;
-    height: 72px;
+    width: 168px;
+    height: 50px;
     pointer-events: none;
     user-select: none;
 }
