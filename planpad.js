@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.37.5';
+    const VERSION = '1.37.7';
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
@@ -872,7 +872,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'edit-names-btn': 'Namensliste bearbeiten – ein Kind pro Zeile als „Nachname, Vorname“.',
         'names-done-btn': 'Namensliste übernehmen.',
         'toggle-pills': 'Kärtchen aller Kinder ein- oder ausblenden. Kärtchen auf einen Tisch ziehen = Platz zuweisen.',
-        'shuffle-btn': 'Mix: Kinder an den Tischen zufällig neu verteilen – Trennen und Koppeln werden beachtet.',
+        'shuffle-btn': 'Mix: Kinder an den Tischen zufällig neu verteilen – Trennen und Koppeln werden beachtet. Ausgegraut, solange noch niemand an einem Tisch sitzt.',
         'demix-btn': 'Demix: Sitzordnung vor dem letzten Mix wiederherstellen.',
         'class-photo': 'Klassenfoto aufnehmen oder wählen und die Gesichter den Kindern zuordnen – alles nur auf diesem Gerät.',
         'learn-names': 'Namen lernen: Quiz mit den Fotos der Klasse. Der Rekord steht auf dem Button.',
@@ -2788,11 +2788,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const st = currentSeating();
         const can = Boolean(st && st.mixBase && !sameSeatMap(st.mixBase, seatMap()));
         b.disabled = !can;
+        // Mix nur, wenn schon mindestens ein Kind an einem Tisch sitzt
+        const mix = $('shuffle-btn');
+        if (mix) {
+            const anySeated = squares.some(sq => sq.dataset.student);
+            mix.disabled = !anySeated;
+            mix.title = anySeated ? 'Kinder an den Tischen zufällig neu verteilen' : 'Erst Kinder auf Tische setzen: „Plätze anlegen oder verteilen“ oder Kärtchen auf Tische ziehen';
+        }
         renderOrderButton();
     }
 
     function distributeRandomly() {
         if (!needStudents()) return;
+        if (!squares.some(sq => sq.dataset.student)) {
+            showToast('Erst Kinder auf Tische setzen – mit „Plätze anlegen oder verteilen“ oder per Kärtchen.', 'info', 3500);
+            return;
+        }
         if (selecting) endSelection();
         setActiveTable(null);
         // Stand vor dem Mischen merken. Mehrmals hintereinander „Mix“: es zählt der Stand vor dem ersten Mischen.
@@ -3602,6 +3613,8 @@ document.addEventListener('DOMContentLoaded', () => {
         selectPlan(plan.id);
         noteStudent = null;
         loadClass(plan);
+        // Klassenwechsel (Dropdown oder Menü): immer die Notizen-Ansicht – die Standardansicht
+        if (students.length && !notesMode) setNotesMode(true);
         renderNotes();
         app.classList.toggle('is-editing-names', !students.length);
         observationCheck().catch(console.error);

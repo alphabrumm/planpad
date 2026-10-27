@@ -265,6 +265,7 @@ button { -webkit-user-select: none; user-select: none; }
 
 .pp-run .pp-icon { width: 24px; height: 24px; }
 .pp-run:active { transform: translateY(1px) scale(0.97); }
+.pp-run:disabled { background: var(--surface-2); color: var(--ink-2); box-shadow: none; opacity: 0.6; cursor: not-allowed; transform: none; }
 
 /* Mix / Demix in der Leiste „Sitzplätze“ */
 .pp-mixrow { display: flex; gap: 8px; margin-top: 12px; }
