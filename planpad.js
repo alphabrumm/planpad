@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.37.3';
+    const VERSION = '1.37.4';
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
@@ -6758,7 +6758,11 @@ document.addEventListener('DOMContentLoaded', () => {
     {
         let first = false;
         try { first = !Object.keys(readPlans()).length && !localStorage.getItem(KEY_DEMO) && !localStorage.getItem('planpad.helpSeen') && !localStorage.getItem('planpad.noDemo'); } catch { /* egal */ }
-        if (first) loadDemo({ auto: true }).catch(console.error);
+        if (first) {
+            // allererster Start: kein Datenschutz-Hinweis zur Demoklasse (er käme sonst sofort) – im nächsten Schuljahr wieder
+            try { localStorage.setItem(KEY_PRIVACY, new Date().toISOString()); } catch { /* egal */ }
+            loadDemo({ auto: true }).catch(console.error);
+        }
     }
     // Hinweise nacheinander zeigen, nie übereinander
     homeScreenHint().catch(console.error)
