@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.37.0';
+    const VERSION = '1.37.1';
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
@@ -34,16 +34,27 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ----- Symbole (wie JPad: 24 × 24, Strich, currentColor) ----- */
-    /** Vorne im Raum: Tafel mit Ablage und Lehrerpult – ohne Text */
-    const BOARD_SVG = `<svg viewBox="0 0 260 64" aria-hidden="true">
-        <rect x="18" y="2" width="224" height="34" rx="4" class="b-frame"/>
-        <rect x="22" y="5" width="216" height="28" rx="2" class="b-board"/>
-        <path d="M40 15c8-4 16 4 24 0s16 4 24 0M40 24h34M178 14h40M178 21h28" class="b-chalk"/>
-        <path d="M132 9v20M122 9v20M142 9v20" class="b-seam"/>
-        <rect x="14" y="36" width="232" height="4" rx="2" class="b-tray"/>
-        <rect x="200" y="33.5" width="12" height="3" rx="1.5" class="b-piece"/>
-        <rect x="94" y="46" width="72" height="16" rx="4" class="b-desk"/>
-        <rect x="100" y="50" width="20" height="3" rx="1.5" class="b-deskline"/>
+    /** Vorne im Raum: Lehrerpult (von oben) mit Buch, iPad und Stift – ohne Text */
+    const BOARD_SVG = `<svg viewBox="0 0 240 72" aria-hidden="true">
+        <rect x="2" y="2" width="236" height="68" rx="8" class="d-top"/>
+        <rect x="8" y="8" width="224" height="56" rx="5" class="d-inner"/>
+        <g transform="translate(66 36) rotate(-13)">
+            <rect x="-32" y="-19" width="64" height="38" rx="3" class="d-cover"/>
+            <rect x="-29.5" y="-16.5" width="28" height="33" rx="1.5" class="d-page"/>
+            <rect x="1.5" y="-16.5" width="28" height="33" rx="1.5" class="d-page"/>
+            <path d="M0 -17v34" class="d-spine"/>
+            <path d="M-25 -10h20M-25 -4.5h20M-25 1h20M-25 6.5h14M5 -10h20M5 -4.5h20M5 1h17M5 6.5h20M5 12h11" class="d-lines"/>
+        </g>
+        <g transform="translate(168 36) rotate(9)">
+            <rect x="-20" y="-25" width="40" height="50" rx="6" class="d-tablet"/>
+            <rect x="-16.5" y="-21.5" width="33" height="43" rx="2.5" class="d-screen"/>
+            <path d="M-11 -14h16M-11 -8h22M-11 -2h12" class="d-lines"/>
+        </g>
+        <g transform="translate(204 40) rotate(-28)">
+            <rect x="-2.6" y="-20" width="5.2" height="32" rx="1.6" class="d-pencil"/>
+            <path d="M-2.6 12 L0 19 L2.6 12 Z" class="d-tip"/>
+            <rect x="-2.6" y="-20" width="5.2" height="5" rx="1.6" class="d-cap"/>
+        </g>
     </svg>`;
     const ICONS = {
         menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
@@ -1653,7 +1664,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const maxY = Math.max(...pos.map(p => p.y)) + 76 + 60;
         const pad = 24;
         const rects = pos.map(p => `<rect x="${p.x}" y="${p.y}" width="76" height="76" rx="10"/>`).join('');
-        const teacher = `<rect class="pp-prev-teacher" x="${maxX / 2 - 90}" y="${maxY - 26}" width="180" height="16" rx="4"/>`;
+        const teacher = `<rect class="pp-prev-teacher" x="${maxX / 2 - 60}" y="${maxY - 30}" width="120" height="26" rx="5"/>`;
         return `<svg class="pp-layout-preview" viewBox="${-pad} ${-pad} ${maxX + 2 * pad} ${maxY + 2 * pad}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${rects}${teacher}</svg>`;
     }
 
@@ -2072,7 +2083,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ----- Raumgröße & Zoom ----- */
     const roomSizer = $('room-sizer');
     const teacherEl = classroom.querySelector('.teacher');
-    if (teacherEl) { teacherEl.innerHTML = BOARD_SVG; teacherEl.setAttribute('aria-label', 'Vorne: Tafel'); teacherEl.setAttribute('role', 'img'); }
+    if (teacherEl) { teacherEl.innerHTML = BOARD_SVG; teacherEl.setAttribute('aria-label', 'Vorne: Pult der Lehrkraft'); teacherEl.setAttribute('role', 'img'); }
     const ZOOM_MIN = 0.4;
     const ZOOM_MAX = 3;
     const FIT_MIN = 0.2;            // Untergrenze beim Einpassen (ganzer Plan immer sichtbar, auch am iPhone)

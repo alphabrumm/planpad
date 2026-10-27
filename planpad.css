@@ -675,7 +675,7 @@ button { -webkit-user-select: none; user-select: none; }
 .pp-layout-preview rect { fill: var(--ink-2); }
 .pp-layout-item[aria-checked="true"] .pp-layout-preview rect,
 .pp-layout-btn .pp-layout-preview rect { fill: var(--accent); }
-.pp-layout-preview .pp-prev-teacher { fill: #2E5A4C; opacity: 0.75; }
+.pp-layout-preview .pp-prev-teacher { fill: var(--surface-2); stroke: var(--ink-2); stroke-width: 6; opacity: 0.8; }
 @media (hover: hover) { .pp-layout-item:hover { background: var(--surface-2); } }
 @media (max-width: 480px) { .pp-layout-menu { grid-template-columns: minmax(0, 1fr); } }
 
@@ -1036,23 +1036,23 @@ button { -webkit-user-select: none; user-select: none; }
     left: 50%;
     bottom: 16px;
     transform: translateX(-50%);
-    width: 260px;
-    height: 64px;
+    width: 240px;
+    height: 72px;
     pointer-events: none;
     user-select: none;
 }
 .teacher svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.teacher .b-frame { fill: #9AA5B5; }
-.teacher .b-board { fill: #2E5A4C; }
-.teacher .b-chalk { fill: none; stroke: rgba(255, 255, 255, 0.55); stroke-width: 1.6; stroke-linecap: round; }
-.teacher .b-seam { stroke: rgba(0, 0, 0, 0.18); stroke-width: 1; }
-.teacher .b-tray { fill: #7D889A; }
-.teacher .b-piece { fill: #FFFFFF; }
-.teacher .b-desk { fill: var(--surface-2); stroke: var(--line); stroke-width: 1.5; }
-.teacher .b-deskline { fill: var(--line); }
-:root[data-effective="dark"] .teacher .b-frame { fill: #5E6878; }
-:root[data-effective="dark"] .teacher .b-board { fill: #23463B; }
-:root[data-effective="dark"] .teacher .b-tray { fill: #4F5868; }
+.teacher .d-top { fill: var(--surface-2); stroke: var(--line); stroke-width: 1.5; }
+.teacher .d-inner { fill: none; stroke: var(--line); stroke-width: 1; opacity: 0.7; }
+.teacher .d-cover { fill: var(--ink-2); opacity: 0.45; }
+.teacher .d-page { fill: var(--surface); stroke: var(--line); stroke-width: 1; }
+.teacher .d-spine { stroke: var(--ink-2); stroke-width: 1.2; opacity: 0.6; }
+.teacher .d-lines { fill: none; stroke: var(--ink-2); stroke-width: 1.6; stroke-linecap: round; opacity: 0.45; }
+.teacher .d-tablet { fill: var(--ink-2); opacity: 0.7; }
+.teacher .d-screen { fill: var(--surface); }
+.teacher .d-pencil { fill: var(--ink-2); opacity: 0.6; }
+.teacher .d-tip { fill: var(--line); }
+.teacher .d-cap { fill: var(--ink-2); opacity: 0.85; }
 
 /* Tische */
 .square {
@@ -1661,9 +1661,8 @@ button { -webkit-user-select: none; user-select: none; }
     #print-root .square { box-shadow: none; border: 1.2px solid #333; background-color: #fff; color: #000; }
     #print-root .square::after { display: none; }
     #print-root .square.has-photo .seat-name { background: rgba(0, 0, 0, 0.7); }
-    #print-root .teacher .b-board { fill: #fff; stroke: #333; stroke-width: 1.5; }
-    #print-root .teacher .b-chalk { stroke: #999; }
-    #print-root .teacher .b-frame, #print-root .teacher .b-tray { fill: #666; }
+    #print-root .teacher .d-top { fill: #fff; stroke: #555; }
+    #print-root .teacher .d-cover, #print-root .teacher .d-tablet, #print-root .teacher .d-pencil, #print-root .teacher .d-cap { fill: #777; }
     #print-root.no-photos .square.has-photo { background-image: none !important; padding: 4px; }
     #print-root.no-photos .square.has-photo .seat-name { position: static; background: none; color: #000; font-size: 13px; white-space: normal; padding: 0; }
 }

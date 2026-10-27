@@ -110,6 +110,6 @@ löscht die lokal gespeicherten Pläne nicht nach längerer Nichtnutzung.
   (Vorlage `localStorage['planpad.catTemplate']`). Stift: umbenennen (nur diese Klasse) oder entfernen – mit
   Warnung, die Stimmen dieser Kategorie in der Klasse werden gelöscht. „Für alle Klassen“ ergänzt in allen
   Klassen (wo Platz ist) und in der Vorlage.
-- Vorne im Raum: Tafel mit Ablage und Pult (SVG, ohne Text) statt der Box „Lehrkraft“.
+- Vorne im Raum: Lehrerpult von oben mit Buch, iPad und Stift (SVG, Grautöne, ohne Text) statt der Box „Lehrkraft“.
 - Menü → Darstellung: Farbkreise für das Akzent-Thema (Blau, Mint, Rosé, Lavendel, Apricot), hell und dunkel,
   gespeichert in `localStorage['planpad.accent']`.
