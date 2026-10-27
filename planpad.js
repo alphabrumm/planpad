@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.33.0';
+    const VERSION = '1.34.0';
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
@@ -3524,7 +3524,77 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPlanList();
     }
 
-    on('plan-btn', 'click', renamePlan);
+    on('plan-btn', 'click', toggleClassMenu);
+
+    /** Klassenname oben links = Auswahlliste aller Klassen */
+    let classMenu = null;
+    function closeClassMenu() {
+        if (!classMenu) return;
+        classMenu.remove();
+        classMenu = null;
+        $('plan-btn').setAttribute('aria-expanded', 'false');
+        document.removeEventListener('pointerdown', onClassMenuOutside, true);
+        document.removeEventListener('keydown', onClassMenuKey, true);
+    }
+    function onClassMenuOutside(e) {
+        if (classMenu && !classMenu.contains(e.target) && !$('plan-btn').contains(e.target)) closeClassMenu();
+    }
+    function onClassMenuKey(e) { if (e.key === 'Escape') { e.stopPropagation(); closeClassMenu(); } }
+    function toggleClassMenu() {
+        if (classMenu) { closeClassMenu(); return; }
+        saveCurrentPlan();
+        const btn = $('plan-btn');
+        const plans = readPlans();
+        const names = Object.keys(plans).sort((a, b) => a.localeCompare(b, 'de', { numeric: true, sensitivity: 'base' }));
+        const menu = document.createElement('div');
+        menu.className = 'pp-classmenu';
+        menu.id = 'class-menu';
+        const list = document.createElement('div');
+        list.className = 'pp-classmenu-list';
+        list.setAttribute('role', 'listbox');
+        list.setAttribute('aria-label', 'Klasse wählen');
+        if (!names.length) {
+            const p = document.createElement('p');
+            p.className = 'pp-hint';
+            p.textContent = 'Noch keine gespeicherte Klasse.';
+            list.appendChild(p);
+        }
+        names.forEach(name => {
+            const it = document.createElement('button');
+            it.type = 'button';
+            it.className = 'pp-classmenu-item';
+            it.setAttribute('role', 'option');
+            const sel = name === currentName;
+            it.setAttribute('aria-selected', String(sel));
+            const n = (plans[name].students || []).length;
+            it.innerHTML = `<span class="pp-classmenu-check">${sel ? icon('check') : ''}</span><span class="pp-classmenu-name">${escapeHtml(name)}</span><small>${n} SuS</small>`;
+            it.addEventListener('click', () => { closeClassMenu(); if (!sel) openPlan(name); });
+            list.appendChild(it);
+        });
+        menu.appendChild(list);
+        const foot = document.createElement('div');
+        foot.className = 'pp-classmenu-foot';
+        const act = (ic, label, fn) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.innerHTML = `${icon(ic)}<span>${label}</span>`;
+            b.addEventListener('click', () => { closeClassMenu(); fn(); });
+            foot.appendChild(b);
+        };
+        act('edit', 'Umbenennen', renamePlan);
+        act('plus', 'Klasse anlegen', newPlan);
+        menu.appendChild(foot);
+        document.body.appendChild(menu);
+        const r = btn.getBoundingClientRect();
+        menu.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - menu.offsetWidth - 8))}px`;
+        menu.style.top = `${r.bottom + 6}px`;
+        classMenu = menu;
+        btn.setAttribute('aria-expanded', 'true');
+        list.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
+        document.addEventListener('pointerdown', onClassMenuOutside, true);
+        document.addEventListener('keydown', onClassMenuKey, true);
+    }
+    window.addEventListener('resize', closeClassMenu);
     on('new-plan-btn', 'click', newPlan);
     on('new-plan-csv-btn', 'click', newPlanFromList);
 

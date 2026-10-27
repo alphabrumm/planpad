@@ -173,6 +173,28 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 }
 
 .pp-plan:active { background: var(--surface-2); }
+.pp-plan-row { display: flex; align-items: center; gap: 3px; max-width: 100%; min-width: 0; }
+.pp-plan-caret { display: inline-flex; flex: none; color: var(--ink-2); transition: transform 150ms; }
+.pp-plan-caret .pp-icon { width: 16px; height: 16px; stroke-width: 2.4; }
+.pp-plan[aria-expanded="true"] .pp-plan-caret { transform: rotate(180deg); }
+.pp-classmenu {
+    position: fixed; z-index: 90; width: min(320px, calc(100vw - 16px)); max-height: min(70vh, 520px);
+    display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius-m); box-shadow: var(--shadow-lg); overflow: hidden;
+}
+.pp-classmenu-list { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 6px; display: flex; flex-direction: column; gap: 2px; }
+.pp-classmenu-list .pp-hint { margin: 8px; }
+.pp-classmenu-item { display: flex; align-items: center; gap: 8px; min-height: 46px; padding: 0 10px 0 6px; border-radius: var(--radius-s); text-align: left; color: var(--ink); }
+.pp-classmenu-item[aria-selected="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+@media (hover: hover) { .pp-classmenu-item:hover { background: var(--surface-2); } }
+.pp-classmenu-check { width: 20px; flex: none; display: inline-flex; }
+.pp-classmenu-check .pp-icon { width: 18px; height: 18px; }
+.pp-classmenu-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; }
+.pp-classmenu-item small { color: var(--ink-2); font-size: 12.5px; font-weight: 400; flex: none; }
+.pp-classmenu-foot { display: flex; border-top: 1px solid var(--line); }
+.pp-classmenu-foot button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; color: var(--accent); font-weight: 700; font-size: 14px; }
+.pp-classmenu-foot button + button { border-left: 1px solid var(--line); }
+.pp-classmenu-foot .pp-icon { width: 17px; height: 17px; }
 
 .pp-plan-name {
     font-weight: 700;

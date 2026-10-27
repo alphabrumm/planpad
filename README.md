@@ -26,6 +26,7 @@ Touchfreundlicher Sitzplan-Editor für den Unterricht. Gestaltung angelehnt an J
   fehlen Tische, werden sie im gewählten Layout ergänzt. Neue Klassen öffnen in der Gruppenansicht.
 - **Pinsel / Papierkorb:** mit angewähltem Tisch nur diesen (Kind lösen bzw. Tisch löschen), sonst Auswahl
   „Alle“ oder „Einzelne …“ (mehrere Tische antippen, bestätigen). Immer mit Rückfrage; danach Gruppenansicht.
+- **Klassen-Auswahl**: Klassenname oben links antippen (▾) → scrollbare Liste aller Klassen, Tippen wechselt; dazu „Umbenennen“ und „Klasse anlegen“.
 - **A-B-Schalter** „In Reihenfolge sortiert“: an = Layout „Reihen“ nach Nachnamen (bei CSV-Klassen,
   sonst Listen-Reihenfolge); aus = ursprüngliche Tischpositionen und Plätze exakt zurück.
   Solange der Schalter aktiv ist, zeigen die Tische zweizeilig Nachname (oben) und Vorname (unten).
