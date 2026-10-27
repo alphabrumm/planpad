@@ -23,7 +23,7 @@
                 t === "auto" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : t;
         } catch (e) { }
     </script>
-    <link rel="stylesheet" href="planpad.css?v=1.36.0">
+    <link rel="stylesheet" href="planpad.css?v=1.37.0">
 </head>
 
 <body>
@@ -162,7 +162,7 @@
                 <div class="pp-room-scroll" id="room-scroll">
                     <div class="pp-room-sizer" id="room-sizer">
                         <div class="classroom" id="classroom">
-                            <div class="teacher">Lehrkraft</div>
+                            <div class="teacher"></div>
                         </div>
                     </div>
                 </div>
@@ -216,6 +216,7 @@
                     <button data-theme-choice="dark"><span data-icon="moon"></span><span>Dunkel</span></button>
                     <button data-theme-choice="auto"><span data-icon="auto"></span><span>System</span></button>
                 </div>
+                <div class="pp-accent-switch" id="accent-switch" role="group" aria-label="Farbthema"></div>
 
                 <h2>Über PlanPad</h2>
                 <p class="pp-about">PlanPad erstellt Sitzpläne direkt im Browser. Jede Klasse kann mehrere Sitzpläne haben
@@ -225,12 +226,12 @@
                 <p class="pp-about"><b>Schuljahresende:</b> Alle Klassen, Fotos, Notizen und Sicherungsdateien müssen am Ende des Schuljahres gelöscht werden. PlanPad erinnert einmal pro Schuljahr daran.</p>
                 <p class="pp-about">Tipp fürs iPad: Teilen → „Zum Home-Bildschirm“. Dann läuft PlanPad auch offline,
                     und Safari löscht die gespeicherten Daten nicht nach längerer Nichtnutzung.</p>
-                <p class="pp-version">Version 1.36.0 · Schrift: Atkinson Hyperlegible (SIL OFL)</p>
+                <p class="pp-version">Version 1.37.0 · Schrift: Atkinson Hyperlegible (SIL OFL)</p>
             </div>
         </aside>
     </div>
 
-    <script src="planpad.js?v=1.36.0"></script>
+    <script src="planpad.js?v=1.37.0"></script>
 </body>
 
 </html>

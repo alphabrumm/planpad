@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.36.0';
+    const VERSION = '1.37.0';
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
@@ -34,6 +34,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ----- Symbole (wie JPad: 24 × 24, Strich, currentColor) ----- */
+    /** Vorne im Raum: Tafel mit Ablage und Lehrerpult – ohne Text */
+    const BOARD_SVG = `<svg viewBox="0 0 260 64" aria-hidden="true">
+        <rect x="18" y="2" width="224" height="34" rx="4" class="b-frame"/>
+        <rect x="22" y="5" width="216" height="28" rx="2" class="b-board"/>
+        <path d="M40 15c8-4 16 4 24 0s16 4 24 0M40 24h34M178 14h40M178 21h28" class="b-chalk"/>
+        <path d="M132 9v20M122 9v20M142 9v20" class="b-seam"/>
+        <rect x="14" y="36" width="232" height="4" rx="2" class="b-tray"/>
+        <rect x="200" y="33.5" width="12" height="3" rx="1.5" class="b-piece"/>
+        <rect x="94" y="46" width="72" height="16" rx="4" class="b-desk"/>
+        <rect x="100" y="50" width="20" height="3" rx="1.5" class="b-deskline"/>
+    </svg>`;
     const ICONS = {
         menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
         undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
@@ -730,7 +741,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 'Irgendwo ins Leere tippen: Auswahl aufheben.',
                 'Ganz oben ohne Auswahl: „Beobachtungen“ (wer gerade beobachtet wird, wie lange noch; „Beobachtungen planen“) und „Statistik“ (Beobachtungen, Noten, Sterne je Kind – Zeile antippen für Details und Verlauf). Darunter die Klassennotizen (gestrichelter Kasten) – „Anlegen“ für Notizen zur ganzen Klasse.',
                 'Unterrichtsbeobachtung: Beim Öffnen einer Klasse schlägt PlanPad 4 Kinder für 10 Schultage vor (Ferien zählen nicht) – zuerst die noch nie Beobachteten. Ein Auge oben links auf dem Tisch zeigt, wer gerade beobachtet wird (beim Präsentieren unsichtbar).',
-                'Unter der Notiz: Sterne für Verhalten, SOL und Sozial – Daumen hoch/runter = ±½ Stern. Stift neben dem Namen: umbenennen. „weitere hinzufügen“: eigene Kategorie (Anzahl Sterne, Startwert) für diese Klasse oder alle.',
+                'Unter der Notiz: Sterne je Kategorie (neue Klassen: Verhalten und Selbstorganisation) – Daumen hoch/runter = ±½ Stern. Stift: umbenennen oder entfernen. „weitere hinzufügen“: eigene Kategorie (bis zu 10) für diese Klasse oder alle.',
                 'Notizen gelten in allen Sitzplänen. Beim Präsentieren werden sie nie angezeigt.'
             ]
         },
@@ -1642,7 +1653,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const maxY = Math.max(...pos.map(p => p.y)) + 76 + 60;
         const pad = 24;
         const rects = pos.map(p => `<rect x="${p.x}" y="${p.y}" width="76" height="76" rx="10"/>`).join('');
-        const teacher = `<rect class="pp-prev-teacher" x="${maxX / 2 - 70}" y="${maxY - 30}" width="140" height="26" rx="8" stroke-width="10"/>`;
+        const teacher = `<rect class="pp-prev-teacher" x="${maxX / 2 - 90}" y="${maxY - 26}" width="180" height="16" rx="4"/>`;
         return `<svg class="pp-layout-preview" viewBox="${-pad} ${-pad} ${maxX + 2 * pad} ${maxY + 2 * pad}" preserveAspectRatio="xMidYMid meet" aria-hidden="true">${rects}${teacher}</svg>`;
     }
 
@@ -2061,6 +2072,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ----- Raumgröße & Zoom ----- */
     const roomSizer = $('room-sizer');
     const teacherEl = classroom.querySelector('.teacher');
+    if (teacherEl) { teacherEl.innerHTML = BOARD_SVG; teacherEl.setAttribute('aria-label', 'Vorne: Tafel'); teacherEl.setAttribute('role', 'img'); }
     const ZOOM_MIN = 0.4;
     const ZOOM_MAX = 3;
     const FIT_MIN = 0.2;            // Untergrenze beim Einpassen (ganzer Plan immer sichtbar, auch am iPhone)
@@ -3130,7 +3142,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const st = currentSeating();
         observ = normObs(plan && plan.observ);
         votes = normVotes(plan && plan.votes);
-        classCats = (plan && Array.isArray(plan.ratingCats) ? plan.ratingCats : []).map(normCat).filter(Boolean);
+        classCats = catsOfPlan(plan);
         applyData({ ...(plan || {}), layout: shownOf(st).layout, squares: shownOf(st).squares });
         renderSeatingPicker();
         showWholePlan();
@@ -3501,6 +3513,7 @@ document.addEventListener('DOMContentLoaded', () => {
             observ: JSON.parse(JSON.stringify(observ)),
             votes: JSON.parse(JSON.stringify(votes)),
             ratingCats: classCats.map(c => ({ ...c })),
+            catsV2: true,
             timestamp: new Date().toISOString(),
             exportedAt: old.exportedAt || null
         };
@@ -4189,7 +4202,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const payload = { plans: out };
         const tpls = readTemplates();
         if (tpls.length) payload.templates = tpls;          // nur Tischpositionen
-        payload.ratingCats = globalCats();                  // Sterne-Kategorien (nur Namen/Einstellungen)
+        payload.catTemplate = catTemplate();                // Vorlage der Sterne-Kategorien (nur Namen/Einstellungen)
         if (noteKinds().length > NOTE_KINDS_BASE.length) payload.noteKinds = noteKinds().slice(NOTE_KINDS_BASE.length);
         if (withPhotos) payload.facesByPlan = photosByPlan;
         if (withNotes) payload.notesByPlan = notesByPlan;
@@ -4359,10 +4372,11 @@ document.addEventListener('DOMContentLoaded', () => {
             squares.forEach(applyFace);
         }
         // Sterne-Kategorien und Notiz-Arten ergänzen (vorhandene bleiben)
-        if (Array.isArray(data.ratingCats)) {
-            const mine = globalCats();
-            const add = data.ratingCats.map(normCat).filter(c => c && !mine.some(m => m.id === c.id));
-            if (add.length) writeGlobalCats([...mine, ...add]);
+        const tplIn = Array.isArray(data.catTemplate) ? data.catTemplate : Array.isArray(data.ratingCats) ? data.ratingCats : null;
+        if (tplIn) {
+            const mine = catTemplate();
+            const add = tplIn.map(normCat).filter(c => c && !['soz'].includes(c.id) && !mine.some(m => m.id === c.id || m.name === c.name));
+            if (add.length) writeCatTemplate([...mine, ...add]);
         }
         if (Array.isArray(data.noteKinds)) data.noteKinds.forEach(k => { if (typeof k === 'string' && k.trim()) addNoteKind(k.trim().slice(0, 30)); });
         // eigene Vorlagen übernehmen (ohne doppelte)
@@ -4475,6 +4489,44 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', eff === 'dark' ? '#151922' : '#F3F5F9'));
         document.querySelectorAll('#theme-switch [data-theme-choice]').forEach(b =>
             b.setAttribute('aria-pressed', String(b.dataset.themeChoice === c)));
+    }
+    /* Farbthema (Akzentfarbe): Blau (Standard) + 4 Pastell-Varianten */
+    const KEY_ACCENT = 'planpad.accent';
+    const ACCENTS = [
+        { id: 'blau', name: 'Blau', dark: '#3157F5', light: '#E3E9FF' },
+        { id: 'mint', name: 'Mint', dark: '#1D8466', light: '#D3F2E6' },
+        { id: 'rose', name: 'Rosé', dark: '#C0397A', light: '#FBDDEA' },
+        { id: 'lavendel', name: 'Lavendel', dark: '#6B4BD6', light: '#E8E0FF' },
+        { id: 'apricot', name: 'Apricot', dark: '#C0571B', light: '#FDE3D0' }
+    ];
+    function applyAccent(id) {
+        const a = ACCENTS.find(x => x.id === id) ? id : 'blau';
+        if (a === 'blau') document.documentElement.removeAttribute('data-accent');
+        else document.documentElement.dataset.accent = a;
+        document.querySelectorAll('#accent-switch [data-accent-choice]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.accentChoice === a)));
+    }
+    {
+        const box = $('accent-switch');
+        if (box) {
+            ACCENTS.forEach(a => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'pp-accent-dot';
+                b.dataset.accentChoice = a.id;
+                b.title = `Farbe ${a.name}`;
+                b.setAttribute('aria-label', `Farbthema ${a.name}`);
+                b.style.setProperty('--dot-ring', a.dark);
+                b.style.setProperty('--dot-fill', a.light);
+                b.addEventListener('click', () => {
+                    try { localStorage.setItem(KEY_ACCENT, a.id); } catch { /* egal */ }
+                    applyAccent(a.id);
+                });
+                box.appendChild(b);
+            });
+        }
+        let saved = 'blau';
+        try { saved = localStorage.getItem(KEY_ACCENT) || 'blau'; } catch { /* egal */ }
+        applyAccent(saved);
     }
     document.querySelectorAll('#theme-switch [data-theme-choice]').forEach(b => b.addEventListener('click', () => {
         try { localStorage.setItem(KEY_THEME, b.dataset.themeChoice); } catch { /* egal */ }
@@ -5105,7 +5157,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const teacher = document.createElement('div');
         teacher.className = 'teacher';
-        teacher.textContent = 'Lehrkraft';
+        teacher.innerHTML = BOARD_SVG;
         room.appendChild(teacher);
 
         const wrap = document.createElement('div');
@@ -6109,13 +6161,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (v === 'new') await openObsStart({});
     }
 
-    /* ----- Sterne-Kategorien (Verhalten, SOL, Sozial, eigene): je Daumen ½ Stern -----
-       Für alle Klassen: localStorage planpad.ratingCats · nur für eine Klasse: in der Klasse (ratingCats) */
-    const KEY_CATS = 'planpad.ratingCats';
+    /* ----- Sterne-Kategorien: jede Klasse hat ihre eigene Liste (0–10), je Daumen ½ Stern -----
+       Vorlage für neue Klassen: localStorage planpad.catTemplate (Standard: Verhalten, Selbstorganisation) */
+    const KEY_CAT_TPL = 'planpad.catTemplate';
+    const MAX_CATS = 10;
     const DEFAULT_CATS = [
         { id: 'lob', name: 'Verhalten', max: 5, start: 3 },
-        { id: 'sol', name: 'SOL', max: 5, start: 3 },
-        { id: 'soz', name: 'Sozial', max: 5, start: 3 }
+        { id: 'sol', name: 'Selbstorganisation', max: 5, start: 3 }
     ];
     function normCat(c) {
         if (!c || typeof c !== 'object' || !c.id || !String(c.name || '').trim()) return null;
@@ -6123,21 +6175,134 @@ document.addEventListener('DOMContentLoaded', () => {
         const start = Math.min(max, Math.max(0, Math.round((Number(c.start) || 0) * 2) / 2));
         return { id: String(c.id), name: String(c.name).trim().slice(0, 40), max, start };
     }
-    function globalCats() {
+    function catTemplate() {
         try {
-            const v = JSON.parse(localStorage.getItem(KEY_CATS));
-            if (Array.isArray(v)) return v.map(normCat).filter(Boolean);
+            const v = JSON.parse(localStorage.getItem(KEY_CAT_TPL));
+            if (Array.isArray(v)) return v.map(normCat).filter(Boolean).slice(0, MAX_CATS);
         } catch { /* Standard */ }
-        return DEFAULT_CATS.map(c => ({ ...c }));
+        // aus Version 1.35: eigene Kategorien „für alle Klassen“ übernehmen
+        let old = [];
+        try { old = JSON.parse(localStorage.getItem('planpad.ratingCats')) || []; } catch { /* egal */ }
+        const extra = (Array.isArray(old) ? old : []).map(normCat).filter(c => c && !['lob', 'sol', 'soz'].includes(c.id));
+        return [...DEFAULT_CATS.map(c => ({ ...c })), ...extra].slice(0, MAX_CATS);
     }
-    function writeGlobalCats(list) {
-        try { localStorage.setItem(KEY_CATS, JSON.stringify(list)); } catch { /* egal */ }
+    function writeCatTemplate(list) {
+        try { localStorage.setItem(KEY_CAT_TPL, JSON.stringify(list.slice(0, MAX_CATS))); } catch { /* egal */ }
     }
-    let classCats = [];             // Kategorien nur für die geöffnete Klasse
-    function allCats() {
-        return [...globalCats().map(c => ({ ...c, scope: 'all' })), ...classCats.map(c => ({ ...c, scope: 'class' }))];
+    /** Kategorien einer gespeicherten Klasse (ältere Klassen: Vorlage + ihre Zusatz-Kategorien) */
+    function catsOfPlan(plan) {
+        const own = (plan && Array.isArray(plan.ratingCats) ? plan.ratingCats : []).map(normCat).filter(Boolean);
+        if (plan && plan.catsV2) return own.slice(0, MAX_CATS);
+        const base = catTemplate();
+        return [...base, ...own.filter(e => !base.some(b => b.id === e.id))].slice(0, MAX_CATS);
     }
-    function catById(id) { return allCats().find(c => c.id === id); }
+    let classCats = DEFAULT_CATS.map(c => ({ ...c }));   // Kategorien der geöffneten Klasse
+    function allCats() { return classCats; }
+    const voteCount = id => Object.values(votes).reduce((n, r) => n + ((r && r[id]) || []).length, 0);
+    /** Stift: umbenennen oder entfernen (mit allen Sternen dieser Kategorie in dieser Klasse) */
+    async function editCat(cat) {
+        const v = await sheet({
+            title: 'Kategorie bearbeiten',
+            text: 'Gilt für diese Klasse.',
+            input: { label: 'Name', value: cat.name },
+            buttons: [{ label: 'Entfernen', value: 'del', kind: 'danger' }, { label: 'Abbrechen', value: null }, { label: 'Speichern', value: true, kind: 'primary' }]
+        });
+        if (v === 'del') {
+            const n = voteCount(cat.id);
+            const ok = await ui.confirm(`„${cat.name}“ entfernen?`,
+                n ? `Damit ${n === 1 ? 'wird auch die vergebene Stimme' : `werden auch alle ${n} vergebenen Stimmen`} dieser Kategorie in „${currentName}“ gelöscht. Das lässt sich nicht rückgängig machen.`
+                    : `Die Kategorie verschwindet aus „${currentName}“. Andere Klassen bleiben unverändert.`,
+                'Entfernen', true);
+            if (!ok) return false;
+            classCats = classCats.filter(c => c.id !== cat.id);
+            Object.values(votes).forEach(r => { if (r) delete r[cat.id]; });
+            saveCurrentPlan(true);
+            showToast(`„${cat.name}“ entfernt.`, 'ok', 2000);
+            return true;
+        }
+        if (typeof v !== 'string' || !v.trim() || v.trim() === cat.name) return false;
+        if (classCats.some(c => c.id !== cat.id && c.name.toLocaleLowerCase('de') === v.trim().toLocaleLowerCase('de'))) { showToast(`„${v.trim()}“ gibt es schon.`, 'warn', 2500); return false; }
+        classCats = classCats.map(c => (c.id === cat.id ? { ...c, name: v.trim().slice(0, 40) } : c));
+        saveCurrentPlan(true);
+        return true;
+    }
+    /** „weitere hinzufügen“: Name, Anzahl Sterne, Startwert – für diese Klasse oder alle */
+    async function addCat() {
+        if (classCats.length >= MAX_CATS) { showToast(`Höchstens ${MAX_CATS} Kategorien je Klasse.`, 'warn', 2500); return false; }
+        const content = document.createElement('div');
+        content.className = 'pp-catform';
+        const nameL = document.createElement('label');
+        nameL.className = 'pp-field';
+        nameL.textContent = 'Name';
+        const nameIn = document.createElement('input');
+        nameIn.type = 'text';
+        nameIn.autocomplete = 'off';
+        nameIn.placeholder = 'z. B. Sozial, Hausaufgaben, Mitarbeit';
+        nameL.appendChild(nameIn);
+        content.appendChild(nameL);
+        const row = document.createElement('div');
+        row.className = 'pp-catform-row';
+        content.appendChild(row);
+        const sel = (label, opts, value) => {
+            const l = document.createElement('label');
+            l.className = 'pp-field';
+            l.textContent = label;
+            const s2 = document.createElement('select');
+            opts.forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; s2.appendChild(o); });
+            s2.value = String(value);
+            l.appendChild(s2);
+            row.appendChild(l);
+            return s2;
+        };
+        const maxSel = sel('Sterne', [3, 4, 5, 6, 7, 8, 9, 10].map(n => [n, `${n} Sterne`]), 5);
+        let startSel = null;
+        const fillStart = () => {
+            const max = Number(maxSel.value);
+            const keep = startSel ? Math.min(max, Number(startSel.value)) : Math.min(3, max);
+            const opts = [];
+            for (let v = 0; v <= max; v += 0.5) opts.push([v, fmtStars(v)]);
+            if (!startSel) startSel = sel('Startwert für alle', opts, keep);
+            else { startSel.textContent = ''; opts.forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; startSel.appendChild(o); }); startSel.value = String(keep); }
+        };
+        fillStart();
+        maxSel.addEventListener('change', fillStart);
+        const hint = document.createElement('p');
+        hint.className = 'pp-hint';
+        hint.textContent = '„Für alle Klassen“ ergänzt die Kategorie in allen vorhandenen Klassen (wo noch Platz ist) und in jeder neuen Klasse.';
+        content.appendChild(hint);
+        setTimeout(() => nameIn.focus(), 250);
+        const where = await sheet({
+            title: 'Neue Kategorie hinzufügen',
+            content,
+            className: 'pp-sheet-cat',
+            buttons: [{ label: 'Nur diese Klasse', value: 'class' }, { label: 'Für alle Klassen', value: 'all', kind: 'primary' }]
+        });
+        if (where !== 'class' && where !== 'all') return false;
+        const name = nameIn.value.trim();
+        if (!name) { showToast('Bitte einen Namen eingeben.', 'warn', 2500); return false; }
+        const same = c => c.name.toLocaleLowerCase('de') === name.toLocaleLowerCase('de');
+        if (classCats.some(same)) { showToast(`„${name}“ gibt es schon.`, 'warn', 2500); return false; }
+        const cat = normCat({ id: `c-${newId()}`, name, max: Number(maxSel.value), start: Number(startSel.value) });
+        classCats = [...classCats, cat];
+        saveCurrentPlan(true);
+        if (where === 'all') {
+            const tpl = catTemplate();
+            if (!tpl.some(same) && tpl.length < MAX_CATS) writeCatTemplate([...tpl, cat]);
+            const plans = readPlans();
+            let changed = false;
+            Object.values(plans).forEach(pl => {
+                if (!pl || pl.id === currentPlanId) return;
+                const list = catsOfPlan(pl);
+                if (list.length >= MAX_CATS || list.some(same)) return;
+                pl.ratingCats = [...list, cat];
+                pl.catsV2 = true;
+                changed = true;
+            });
+            if (changed) writePlans(plans);
+        }
+        showToast(`„${name}“ hinzugefügt${where === 'class' ? ' – nur für diese Klasse' : ' – für alle Klassen'}.`, 'ok', 2500);
+        return true;
+    }
     function voteSeries(name, cat) {
         const arr = ((votes[name] || {})[cat.id] || []).slice().sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
         let v = cat.start;
@@ -6165,90 +6330,6 @@ document.addEventListener('DOMContentLoaded', () => {
         arr.forEach((x, i) => { if (String(x.ts) >= String(arr[last].ts)) last = i; });
         arr.splice(last, 1);
         saveCurrentPlan(true);
-    }
-    /** Namen ändern (Stift neben dem Namen); eigene Kategorien lassen sich auch entfernen */
-    async function editCat(cat) {
-        const own = !DEFAULT_CATS.some(c => c.id === cat.id);
-        const buttons = [{ label: 'Abbrechen', value: null }];
-        if (own) buttons.push({ label: 'Entfernen', value: 'del', kind: 'danger' });
-        buttons.push({ label: 'Speichern', value: true, kind: 'primary' });
-        const v = await sheet({
-            title: 'Kategorie umbenennen',
-            text: cat.scope === 'class' ? 'Gilt nur für diese Klasse.' : 'Gilt für alle Klassen.',
-            input: { label: 'Name', value: cat.name },
-            buttons
-        });
-        if (v === 'del') {
-            if (!await ui.confirm(`„${cat.name}“ entfernen?`, cat.scope === 'class' ? 'Die Kategorie verschwindet aus dieser Klasse. Bereits vergebene Sterne bleiben im Hintergrund gespeichert.' : 'Die Kategorie verschwindet aus allen Klassen. Bereits vergebene Sterne bleiben im Hintergrund gespeichert.', 'Entfernen', true)) return false;
-            if (cat.scope === 'class') { classCats = classCats.filter(c => c.id !== cat.id); saveCurrentPlan(true); }
-            else writeGlobalCats(globalCats().filter(c => c.id !== cat.id));
-            return true;
-        }
-        if (typeof v !== 'string' || !v.trim() || v.trim() === cat.name) return false;
-        const rename = list => list.map(c => (c.id === cat.id ? { ...c, name: v.trim().slice(0, 40) } : c));
-        if (cat.scope === 'class') { classCats = rename(classCats); saveCurrentPlan(true); }
-        else writeGlobalCats(rename(globalCats()));
-        return true;
-    }
-    /** „weitere hinzufügen“: Name, Anzahl Sterne, Startwert – für diese Klasse oder alle */
-    async function addCat() {
-        const content = document.createElement('div');
-        content.className = 'pp-catform';
-        const field = (label, el) => {
-            const l = document.createElement('label');
-            l.className = 'pp-field';
-            l.textContent = label;
-            l.appendChild(el);
-            content.appendChild(l);
-            return el;
-        };
-        const nameIn = document.createElement('input');
-        nameIn.type = 'text';
-        nameIn.autocomplete = 'off';
-        nameIn.placeholder = 'z. B. Hausaufgaben, Mitarbeit, Ordnung';
-        field('Name', nameIn);
-        const row = document.createElement('div');
-        row.className = 'pp-catform-row';
-        content.appendChild(row);
-        const sel = (label, opts, value) => {
-            const l = document.createElement('label');
-            l.className = 'pp-field';
-            l.textContent = label;
-            const s2 = document.createElement('select');
-            opts.forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; s2.appendChild(o); });
-            s2.value = String(value);
-            l.appendChild(s2);
-            row.appendChild(l);
-            return s2;
-        };
-        const maxSel = sel('Sterne', [3, 4, 5, 6, 7, 8, 9, 10].map(n => [n, `${n} Sterne`]), 5);
-        let startSel = null;
-        const fillStart = () => {
-            const max = Number(maxSel.value);
-            const keep = startSel ? Math.min(max, Number(startSel.value)) : Math.min(3, max);
-            const opts = [];
-            for (let v = 0; v <= max; v += 0.5) opts.push([v, fmtStars(v)]);
-            if (!startSel) startSel = sel('Startwert für alle', opts, keep);
-            else { startSel.textContent = ''; opts.forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; startSel.appendChild(o); }); startSel.value = String(keep); }
-        };
-        fillStart();
-        maxSel.addEventListener('change', fillStart);
-        setTimeout(() => nameIn.focus(), 250);
-        const where = await sheet({
-            title: 'Neue Kategorie hinzufügen',
-            content,
-            className: 'pp-sheet-cat',
-            buttons: [{ label: 'Nur diese Klasse', value: 'class' }, { label: 'Für alle Klassen', value: 'all', kind: 'primary' }]
-        });
-        if (where !== 'class' && where !== 'all') return false;
-        const name = nameIn.value.trim();
-        if (!name) { showToast('Bitte einen Namen eingeben.', 'warn', 2500); return false; }
-        if (allCats().some(c => c.name.toLocaleLowerCase('de') === name.toLocaleLowerCase('de'))) { showToast(`„${name}“ gibt es schon.`, 'warn', 2500); return false; }
-        const cat = normCat({ id: `c-${newId()}`, name, max: Number(maxSel.value), start: Number(startSel.value) });
-        if (where === 'class') { classCats = [...classCats, cat]; saveCurrentPlan(true); }
-        else writeGlobalCats([...globalCats(), cat]);
-        showToast(`„${name}“ hinzugefügt${where === 'class' ? ' – nur für diese Klasse' : ' – für alle Klassen'}.`, 'ok', 2500);
-        return true;
     }
     function renderVotes(name) {
         const box = document.createElement('section');
@@ -6297,13 +6378,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 box.appendChild(row);
             });
-            const more = document.createElement('button');
-            more.type = 'button';
-            more.className = 'pp-vote-more';
-            more.id = 'add-cat';
-            more.textContent = 'weitere hinzufügen';
-            more.addEventListener('click', async () => { if (await addCat()) draw(); });
-            box.appendChild(more);
+            if (!allCats().length) {
+                const p = document.createElement('p');
+                p.className = 'pp-hint pp-vote-none';
+                p.textContent = 'Keine Sterne-Kategorien in dieser Klasse.';
+                box.appendChild(p);
+            }
+            if (allCats().length < MAX_CATS) {
+                const more = document.createElement('button');
+                more.type = 'button';
+                more.className = 'pp-vote-more';
+                more.id = 'add-cat';
+                more.textContent = allCats().length ? 'weitere hinzufügen' : 'Kategorie hinzufügen';
+                more.addEventListener('click', async () => { if (await addCat()) draw(); });
+                box.appendChild(more);
+            } else {
+                const p = document.createElement('p');
+                p.className = 'pp-hint pp-vote-none';
+                p.textContent = `Höchstens ${MAX_CATS} Kategorien.`;
+                box.appendChild(p);
+            }
         };
         draw();
         return box;

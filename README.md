@@ -104,3 +104,12 @@ löscht die lokal gespeicherten Pläne nicht nach längerer Nichtnutzung.
   und „Handbuch öffnen“. Die großen Handbuch-Buttons in der Seitenleiste entfallen.
 - Langes Drücken (≥ 1 s) auf Buttons und Auswahlmenüs zeigt eine Erklärung (Texte in `TIPS`, sonst title/aria-label);
   der Button wird dabei nicht ausgelöst. Schließen mit ×.
+
+## Kategorien je Klasse, Tafel, Farbthemen (ab 1.37.0)
+- Jede Klasse hat ihre eigenen Sterne-Kategorien (0–10). Neue Klassen: „Verhalten“ und „Selbstorganisation“
+  (Vorlage `localStorage['planpad.catTemplate']`). Stift: umbenennen (nur diese Klasse) oder entfernen – mit
+  Warnung, die Stimmen dieser Kategorie in der Klasse werden gelöscht. „Für alle Klassen“ ergänzt in allen
+  Klassen (wo Platz ist) und in der Vorlage.
+- Vorne im Raum: Tafel mit Ablage und Pult (SVG, ohne Text) statt der Box „Lehrkraft“.
+- Menü → Darstellung: Farbkreise für das Akzent-Thema (Blau, Mint, Rosé, Lavendel, Apricot), hell und dunkel,
+  gespeichert in `localStorage['planpad.accent']`.
