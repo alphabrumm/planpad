@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.37.2';
+    const VERSION = '1.37.3';
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
@@ -6763,7 +6763,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Hinweise nacheinander zeigen, nie übereinander
     homeScreenHint().catch(console.error)
         .then(privacyReminder).catch(console.error)
-        .then(firstRunHelp).catch(console.error)
+
         .then(backupReminder).catch(console.error)
         .then(observationCheck).catch(console.error);
     // angefangene Notiz sichern, wenn die App in den Hintergrund geht
