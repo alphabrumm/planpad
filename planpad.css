@@ -805,8 +805,17 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
     background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius-s);
     padding: 8px 10px; resize: vertical;
 }
-.pp-note-field textarea { min-height: 64px; }
+.pp-note-field textarea { min-height: 0; overflow-y: auto; }
 .pp-note-field input { max-width: 160px; }
+.pp-note-row { display: flex; gap: 10px; align-items: flex-start; }
+.pp-note-gradefield { flex: 0 0 84px; }
+.pp-note-gradefield input { width: 100%; min-height: 42px; box-sizing: border-box; }
+.pp-note-kindfield { flex: 1; min-width: 0; }
+.pp-note-kind {
+    font: inherit; font-size: 16px; font-weight: 400; color: var(--ink); width: 100%; min-height: 42px;
+    background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 0 8px;
+}
+.pp-note-kindtag { font-size: 12px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 2px 7px; border-radius: 999px; white-space: nowrap; }
 .pp-note-field textarea:focus, .pp-note-field input:focus { border-color: var(--accent); outline: none; }
 .pp-note-actions { display: flex; justify-content: flex-end; gap: 8px; }
 
@@ -1534,15 +1543,22 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .pp-obs-auto input { width: 20px; height: 20px; }
 
 .pp-stars { position: relative; display: inline-block; font-size: 19px; line-height: 1; color: var(--line); letter-spacing: 0; white-space: nowrap; }
-.pp-stars::before { content: "★★★★★"; }
+.pp-stars::before { content: attr(data-s); }
 .pp-stars i { position: absolute; left: 0; top: 0; overflow: hidden; color: #F2B705; }
-.pp-stars i::before { content: "★★★★★"; }
+.pp-stars i::before { content: attr(data-s); }
 .pp-votes { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 4px; padding: 10px 12px; border-radius: var(--radius-m); background: var(--surface-2); }
 .pp-vote { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; }
 .pp-vote + .pp-vote { border-top: 1px solid var(--line); padding-top: 8px; }
 .pp-vote .is-down { margin-left: auto; }
 .pp-vote-spacer { width: 32px; flex: none; }
-.pp-vote-label { flex: 1 0 calc(100% - 44px); font-weight: 700; font-size: 14px; }
+.pp-vote-label { flex: 1 0 calc(100% - 44px); font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 2px; min-width: 0; }
+.pp-vote-label > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-vote-edit { width: 28px; height: 28px; flex: none; display: grid; place-items: center; color: var(--ink-2); border-radius: var(--radius-s); }
+.pp-vote-edit .pp-icon { width: 15px; height: 15px; }
+.pp-vote-more { align-self: flex-start; margin-top: 2px; padding: 4px 2px; color: var(--accent); font-weight: 700; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; }
+.pp-catform { display: flex; flex-direction: column; gap: 10px; }
+.pp-catform input, .pp-catform select { font: inherit; font-size: 16px; min-height: 42px; width: 100%; }
+.pp-catform-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .pp-vote > * { order: 2; }
 .pp-vote > .pp-vote-label { order: 0; }
 .pp-vote > .pp-vote-undo, .pp-vote > .pp-vote-spacer { order: 1; height: 28px; }
@@ -1576,7 +1592,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .pp-stat-grades li { display: grid; grid-template-columns: auto auto 1fr; gap: 10px; align-items: baseline; font-size: 14px; }
 .pp-stat-grades span { color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pp-stat-grades em { font-style: normal; color: var(--ink); overflow-wrap: anywhere; }
-.pp-chart-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pp-chart-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
 .pp-chart { margin: 0; background: var(--surface-2); border-radius: var(--radius-m); padding: 8px 8px 4px; }
 .pp-chart figcaption { font-size: 13px; color: var(--ink-2); margin-bottom: 2px; }
 .pp-chart figcaption b { color: var(--ink); }
@@ -1585,8 +1601,12 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .pp-chart .g { stroke: var(--line); stroke-width: 1; }
 .pp-chart .l { fill: none; stroke: var(--accent); stroke-width: 2.2; stroke-linejoin: round; }
 .pp-chart circle { fill: var(--accent); }
-.pp-chart-sol .l { stroke: var(--ok); }
-.pp-chart-sol circle { fill: var(--ok); }
+.pp-chart-c1 .l { stroke: var(--ok); }
+.pp-chart-c1 circle { fill: var(--ok); }
+.pp-chart-c2 .l { stroke: #D9822B; }
+.pp-chart-c2 circle { fill: #D9822B; }
+.pp-chart-c3 .l { stroke: #9B59D0; }
+.pp-chart-c3 circle { fill: #9B59D0; }
 @media (max-width: 600px) {
     .pp-stat-tiles { grid-template-columns: repeat(2, 1fr); }
     .pp-chart-row { grid-template-columns: 1fr; }

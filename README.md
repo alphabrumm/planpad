@@ -89,3 +89,12 @@ löscht die lokal gespeicherten Pläne nicht nach längerer Nichtnutzung.
   (`demo/klassenfoto.png` = Klassenfoto zum Ausprobieren von „Gesichter zuordnen“), 3 Sitzpläne, Regeln,
   Notizen mit Noten, Klassennotizen, Beobachtungsrunden, Lob/SOL-Verlauf (bis 4 Monate, nie vor Schuljahresbeginn).
 - Test-Schalter: `localStorage['planpad.noDemo']`.
+
+## Sterne-Kategorien und Notiz-Art (ab 1.35.0)
+- Sterne unter der Notiz: „Verhalten“ (vorher Lob/Tadel), „SOL“, „Sozial“. Stift neben dem Namen = umbenennen
+  (eigene Kategorien auch entfernen). „weitere hinzufügen“: Name, Anzahl Sterne (3–10), Startwert; „Nur diese
+  Klasse“ (in der Klasse gespeichert) oder „Für alle Klassen“ (`localStorage['planpad.ratingCats']`, auch in
+  Sicherungsdateien). Statistik zeigt alle Kategorien als Spalten und Verläufe.
+- Neue Notiz: Unterrichtsnotiz 2 Zeilen, „Bemerkung“ entfällt (alte Bemerkungen bleiben sichtbar). Neben der
+  schmalen „Note“ das Dropdown „Art“: Beitrag (Standard), Beobachtung, Präsentation, „+ Art ergänzen …“ (eigene
+  Arten gelten sofort für alle Klassen, `localStorage['planpad.noteKinds']`).

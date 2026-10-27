@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.34.0';
+    const VERSION = '1.35.0';
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
@@ -255,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let lastDirty = null;           // zuletzt gezeigter Schloss-Zustand der Reiter
     let namesSession = null;        // laufende Bearbeitung der Namensliste: { lines, origins }
     let observ = { off: false, count: 4, periods: [] };   // Unterrichtsbeobachtungen der Klasse
-    let votes = {};                 // Lob/Tadel und SOL je Kind
+    let votes = {};                 // Sterne je Kind und Kategorie
     let lastNames = {};             // Name → Nachname (aus der CSV-Liste), für „In Reihenfolge“
 
     /* ==================================================
@@ -551,8 +551,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (lastNames[oldName] !== undefined) { lastNames[newName] = lastNames[oldName]; delete lastNames[oldName]; }
         observ.periods.forEach(p => { if (p.name === oldName) p.name = newName; });
         if (votes[oldName]) {
-            const o = votes[oldName], n = votes[newName] || { lob: [], sol: [] };
-            votes[newName] = { lob: [...n.lob, ...o.lob], sol: [...n.sol, ...o.sol] };
+            const o = votes[oldName];
+            const n = votes[newName] || {};
+            votes[newName] = { ...n };
+            Object.entries(o).forEach(([k, a]) => { votes[newName][k] = [...(n[k] || []), ...a]; });
             delete votes[oldName];
         }
         separationGroups = separationGroups.map(g => g.map(swap));
@@ -724,9 +726,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 'Neue Notizen sind gelb markiert („neu“), der Tisch bekommt einen gelben Punkt. Ohne Auswahl zeigt die Leiste alle neuen Notizen der Klasse – mit ✓ einzeln abhaken oder „Alle als gelesen markieren“. Hat ein Kind keine neue Notiz mehr, verschwindet der Punkt.',
                 'Stift neben dem Namen: Namen ändern – Notizen bleiben erhalten. Foto antippen: Foto ändern.',
                 'Irgendwo ins Leere tippen: Auswahl aufheben.',
-                'Ganz oben ohne Auswahl: „Beobachtungen“ (wer gerade beobachtet wird, wie lange noch; „Beobachtungen planen“) und „Statistik“ (Beobachtungen, Noten, Lob/SOL je Kind – Zeile antippen für Details und Verlauf). Darunter die Klassennotizen (gestrichelter Kasten) – „Anlegen“ für Notizen zur ganzen Klasse.',
+                'Ganz oben ohne Auswahl: „Beobachtungen“ (wer gerade beobachtet wird, wie lange noch; „Beobachtungen planen“) und „Statistik“ (Beobachtungen, Noten, Sterne je Kind – Zeile antippen für Details und Verlauf). Darunter die Klassennotizen (gestrichelter Kasten) – „Anlegen“ für Notizen zur ganzen Klasse.',
                 'Unterrichtsbeobachtung: Beim Öffnen einer Klasse schlägt PlanPad 4 Kinder für 10 Schultage vor (Ferien zählen nicht) – zuerst die noch nie Beobachteten. Ein Auge oben links auf dem Tisch zeigt, wer gerade beobachtet wird (beim Präsentieren unsichtbar).',
-                'Unter der Notiz: Lob/Tadel und SOL mit Daumen hoch/runter – je ½ Stern, Start bei 3 von 5 Sternen.',
+                'Unter der Notiz: Sterne für Verhalten, SOL und Sozial – Daumen hoch/runter = ±½ Stern. Stift neben dem Namen: umbenennen. „weitere hinzufügen“: eigene Kategorie (Anzahl Sterne, Startwert) für diese Klasse oder alle.',
                 'Notizen gelten in allen Sitzplänen. Beim Präsentieren werden sie nie angezeigt.'
             ]
         },
@@ -2974,6 +2976,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const st = currentSeating();
         observ = normObs(plan && plan.observ);
         votes = normVotes(plan && plan.votes);
+        classCats = (plan && Array.isArray(plan.ratingCats) ? plan.ratingCats : []).map(normCat).filter(Boolean);
         applyData({ ...(plan || {}), layout: shownOf(st).layout, squares: shownOf(st).squares });
         renderSeatingPicker();
         showWholePlan();
@@ -3343,6 +3346,7 @@ document.addEventListener('DOMContentLoaded', () => {
             seatingId: currentSeatingId,
             observ: JSON.parse(JSON.stringify(observ)),
             votes: JSON.parse(JSON.stringify(votes)),
+            ratingCats: classCats.map(c => ({ ...c })),
             timestamp: new Date().toISOString(),
             exportedAt: old.exportedAt || null
         };
@@ -3962,19 +3966,19 @@ document.addEventListener('DOMContentLoaded', () => {
             content.append(row, warn);
         }
         let withNotes = false;
-        // Lob/SOL und Beobachtungen sind ebenso persönliche Daten: nur zusammen mit den Notizen sichern
+        // Sterne und Beobachtungen sind ebenso persönliche Daten: nur zusammen mit den Notizen sichern
         const extraTotal = keys.reduce((t, k) => {
             const pl = plans[k];
             const v = pl.votes && typeof pl.votes === 'object' ? Object.values(pl.votes) : [];
             return t + ((pl.observ && Array.isArray(pl.observ.periods)) ? pl.observ.periods.length : 0)
-                + v.reduce((a, r) => a + ((r && r.lob) || []).length + ((r && r.sol) || []).length, 0);
+                + v.reduce((a, r) => a + Object.values(r || {}).reduce((b, x) => b + (Array.isArray(x) ? x.length : 0), 0), 0);
         }, 0);
         if (noteTotal || extraTotal) {
             const row = document.createElement('div');
             row.className = 'pp-setting-row';
             row.style.margin = '6px 0 10px';
             row.innerHTML = extraTotal
-                ? `<span>Notizen, Lob/SOL und Beobachtungen einschließen (${noteTotal + extraTotal})</span>`
+                ? `<span>Notizen, Sterne und Beobachtungen einschließen (${noteTotal + extraTotal})</span>`
                 : `<span>Notizen einschließen (${noteTotal})</span>`;
             const seg = document.createElement('div');
             seg.className = 'pp-segmented pp-segmented-small';
@@ -4031,6 +4035,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const payload = { plans: out };
         const tpls = readTemplates();
         if (tpls.length) payload.templates = tpls;          // nur Tischpositionen
+        payload.ratingCats = globalCats();                  // Sterne-Kategorien (nur Namen/Einstellungen)
+        if (noteKinds().length > NOTE_KINDS_BASE.length) payload.noteKinds = noteKinds().slice(NOTE_KINDS_BASE.length);
         if (withPhotos) payload.facesByPlan = photosByPlan;
         if (withNotes) payload.notesByPlan = notesByPlan;
         const base = names && keys.length === 1 ? `planpad_${fileSafe(keys[0])}` : 'planpad_alle-klassen';
@@ -4198,6 +4204,13 @@ document.addEventListener('DOMContentLoaded', () => {
             renderStudentList();
             squares.forEach(applyFace);
         }
+        // Sterne-Kategorien und Notiz-Arten ergänzen (vorhandene bleiben)
+        if (Array.isArray(data.ratingCats)) {
+            const mine = globalCats();
+            const add = data.ratingCats.map(normCat).filter(c => c && !mine.some(m => m.id === c.id));
+            if (add.length) writeGlobalCats([...mine, ...add]);
+        }
+        if (Array.isArray(data.noteKinds)) data.noteKinds.forEach(k => { if (typeof k === 'string' && k.trim()) addNoteKind(k.trim().slice(0, 30)); });
         // eigene Vorlagen übernehmen (ohne doppelte)
         if (Array.isArray(data.templates)) {
             const mine = readTemplates();
@@ -4221,6 +4234,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (!note || !note.id || mine.some(x => x.id === note.id)) return;
                         const copy = { id: String(note.id), ts: note.ts, lesson: String(note.lesson || ''), grade: String(note.grade || ''), remark: String(note.remark || '') };
                         if (note.text) copy.text = String(note.text);
+                        if (note.kind) copy.kind = String(note.kind).slice(0, 30);
                         if (note.unread) copy.unread = true;
                         mine.push(copy);
                         noteCount++;
@@ -5079,16 +5093,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /** Angefangene Notiz nicht verlieren: beim Wechsel automatisch speichern */
+    /* Art einer Notiz: Beitrag (Standard), Beobachtung, Präsentation + eigene (für alle Klassen) */
+    const KEY_NOTE_KINDS = 'planpad.noteKinds';
+    const NOTE_KINDS_BASE = ['Beitrag', 'Beobachtung', 'Präsentation'];
+    function noteKinds() {
+        let extra = [];
+        try { extra = JSON.parse(localStorage.getItem(KEY_NOTE_KINDS) || '[]'); } catch { /* egal */ }
+        const out = [...NOTE_KINDS_BASE];
+        (Array.isArray(extra) ? extra : []).forEach(k => { if (typeof k === 'string' && k.trim() && !out.includes(k.trim())) out.push(k.trim()); });
+        return out;
+    }
+    function addNoteKind(k) {
+        const extra = noteKinds().slice(NOTE_KINDS_BASE.length);
+        if (noteKinds().includes(k)) return;
+        try { localStorage.setItem(KEY_NOTE_KINDS, JSON.stringify([...extra, k])); } catch { /* egal */ }
+    }
+    function fillKindSelect(sel, value) {
+        sel.textContent = '';
+        const kinds = noteKinds();
+        if (value && !kinds.includes(value)) kinds.push(value);
+        kinds.forEach(k => { const o = document.createElement('option'); o.value = k; o.textContent = k; sel.appendChild(o); });
+        const add = document.createElement('option');
+        add.value = '__add';
+        add.textContent = '+ Art ergänzen …';
+        sel.appendChild(add);
+        sel.value = value || kinds[0];
+    }
+
     function saveDraft() {
         saveClassDraft();
         if (!noteForm || !noteStudent) return false;
         const lesson = noteForm.lesson.value.trim();
         const grade = noteForm.grade.value.trim();
-        const remark = noteForm.remark.value.trim();
-        if (!lesson && !grade && !remark) return false;
+        const kind = noteForm.kind.value && noteForm.kind.value !== '__add' ? noteForm.kind.value : NOTE_KINDS_BASE[0];
+        if (!lesson && !grade) return false;
         const note = editingNote
-            ? { ...editingNote, lesson, grade, remark, edited: new Date().toISOString() }
-            : { id: newId(), ts: new Date().toISOString(), lesson, grade, remark, unread: true };
+            ? { ...editingNote, lesson, grade, kind, edited: new Date().toISOString() }
+            : { id: newId(), ts: new Date().toISOString(), lesson, grade, kind, remark: '', unread: true };
         if (upsertNote(noteStudent, note)) {
             showToast(`Notiz für ${noteStudent} gespeichert.`, 'ok', 1800);
             noteForm = null;
@@ -5322,6 +5363,12 @@ document.addEventListener('DOMContentLoaded', () => {
             badge.textContent = 'neu';
             ch.appendChild(badge);
         }
+        if (n.kind) {
+            const k = document.createElement('span');
+            k.className = 'pp-note-kindtag';
+            k.textContent = n.kind;
+            ch.appendChild(k);
+        }
         if (n.grade) {
             const g = document.createElement('span');
             g.className = 'pp-note-grade';
@@ -5466,20 +5513,40 @@ document.addEventListener('DOMContentLoaded', () => {
             return el;
         };
         const lesson = field('Unterrichtsnotiz', document.createElement('textarea'));
-        lesson.rows = 3;
+        lesson.rows = 2;
         lesson.placeholder = 'z. B. Mitarbeit, Material, Verhalten …';
+        // Note (schmal) und Art nebeneinander
+        const gradeRow = document.createElement('div');
+        gradeRow.className = 'pp-note-row';
+        const gl = document.createElement('label');
+        gl.className = 'pp-note-field pp-note-gradefield';
+        gl.textContent = 'Note';
         const grade = document.createElement('input');
         grade.type = 'text';
-        grade.placeholder = 'z. B. 2, 2–, +';
+        grade.placeholder = 'z. B. 2–';
         grade.autocomplete = 'off';
-        field('Note', grade);
-        const remark = field('Bemerkung', document.createElement('textarea'));
-        remark.rows = 2;
-        remark.placeholder = 'optional';
+        gl.appendChild(grade);
+        const kl = document.createElement('label');
+        kl.className = 'pp-note-field pp-note-kindfield';
+        kl.textContent = 'Art';
+        const kind = document.createElement('select');
+        kind.className = 'pp-note-kind';
+        kl.appendChild(kind);
+        gradeRow.append(gl, kl);
+        form.appendChild(gradeRow);
+        fillKindSelect(kind, editingNote && editingNote.kind ? editingNote.kind : NOTE_KINDS_BASE[0]);
+        let lastKind = kind.value;
+        kind.addEventListener('change', async () => {
+            if (kind.value !== '__add') { lastKind = kind.value; return; }
+            const name = await ui.prompt('Art ergänzen', 'Neue Art (gilt sofort für alle Klassen)', '', 'Hinzufügen');
+            const k = name && name.trim().slice(0, 30);
+            if (k) addNoteKind(k);
+            fillKindSelect(kind, k || lastKind);
+            lastKind = kind.value;
+        });
         if (editingNote) {
             lesson.value = editingNote.lesson || '';
             grade.value = editingNote.grade || '';
-            remark.value = editingNote.remark || '';
         }
         const actions = document.createElement('div');
         actions.className = 'pp-note-actions';
@@ -5498,7 +5565,7 @@ document.addEventListener('DOMContentLoaded', () => {
         actions.appendChild(save);
         form.appendChild(actions);
         notesBody.appendChild(form);
-        noteForm = { lesson, grade, remark };
+        noteForm = { lesson, grade, kind };
         notesBody.appendChild(renderVotes(noteStudent));
 
         // Bisherige Notizen
@@ -5513,7 +5580,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ==================================================
-       Unterrichtsbeobachtungen, Lob/Tadel, SOL, Statistik
+       Unterrichtsbeobachtungen, Sterne (Verhalten, SOL, Sozial …), Statistik
        Alles gehört zur Klasse (wird mit ihr gespeichert und gesichert) – nur lokal.
        observ = { off, periods: [{ id, name, start, end, done }] }   (Datum als JJJJ-MM-TT)
        votes  = { Name: { lob: [{ ts, d }], sol: [{ ts, d }] } }      (d = +1 / −1, je ½ Stern)
@@ -5577,7 +5644,7 @@ document.addEventListener('DOMContentLoaded', () => {
         Object.entries(v).forEach(([n, r]) => {
             if (!r || typeof r !== 'object') return;
             const list = a => (Array.isArray(a) ? a.filter(x => x && (x.d === 1 || x.d === -1) && x.ts).map(x => ({ ts: String(x.ts), d: x.d })) : []);
-            out[n] = { lob: list(r.lob), sol: list(r.sol) };
+            out[n] = Object.fromEntries(Object.entries(r).filter(([, a]) => Array.isArray(a)).map(([k, a]) => [k, list(a)]));
         });
         return out;
     }
@@ -5888,45 +5955,167 @@ document.addEventListener('DOMContentLoaded', () => {
         if (v === 'new') await openObsStart({});
     }
 
-    /* ----- Lob/Tadel und SOL: 0–5 Sterne, Start 3, je Daumen ½ Stern ----- */
-    const VOTE_KINDS = { lob: 'Lob / Tadel', sol: 'SOL' };
-    function voteSeries(name, kind) {
-        const arr = ((votes[name] || {})[kind] || []).slice().sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
-        let v = 3;
-        return arr.map(x => { v = Math.min(5, Math.max(0, v + x.d * 0.5)); return { ts: x.ts, v }; });
+    /* ----- Sterne-Kategorien (Verhalten, SOL, Sozial, eigene): je Daumen ½ Stern -----
+       Für alle Klassen: localStorage planpad.ratingCats · nur für eine Klasse: in der Klasse (ratingCats) */
+    const KEY_CATS = 'planpad.ratingCats';
+    const DEFAULT_CATS = [
+        { id: 'lob', name: 'Verhalten', max: 5, start: 3 },
+        { id: 'sol', name: 'SOL', max: 5, start: 3 },
+        { id: 'soz', name: 'Sozial', max: 5, start: 3 }
+    ];
+    function normCat(c) {
+        if (!c || typeof c !== 'object' || !c.id || !String(c.name || '').trim()) return null;
+        const max = Math.min(10, Math.max(2, Math.round(Number(c.max) || 5)));
+        const start = Math.min(max, Math.max(0, Math.round((Number(c.start) || 0) * 2) / 2));
+        return { id: String(c.id), name: String(c.name).trim().slice(0, 40), max, start };
     }
-    function starsOf(name, kind) {
-        const s = voteSeries(name, kind);
-        return s.length ? s[s.length - 1].v : 3;
+    function globalCats() {
+        try {
+            const v = JSON.parse(localStorage.getItem(KEY_CATS));
+            if (Array.isArray(v)) return v.map(normCat).filter(Boolean);
+        } catch { /* Standard */ }
+        return DEFAULT_CATS.map(c => ({ ...c }));
+    }
+    function writeGlobalCats(list) {
+        try { localStorage.setItem(KEY_CATS, JSON.stringify(list)); } catch { /* egal */ }
+    }
+    let classCats = [];             // Kategorien nur für die geöffnete Klasse
+    function allCats() {
+        return [...globalCats().map(c => ({ ...c, scope: 'all' })), ...classCats.map(c => ({ ...c, scope: 'class' }))];
+    }
+    function catById(id) { return allCats().find(c => c.id === id); }
+    function voteSeries(name, cat) {
+        const arr = ((votes[name] || {})[cat.id] || []).slice().sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
+        let v = cat.start;
+        return arr.map(x => { v = Math.min(cat.max, Math.max(0, v + x.d * 0.5)); return { ts: x.ts, v }; });
+    }
+    function starsOf(name, cat) {
+        const s = voteSeries(name, cat);
+        return s.length ? s[s.length - 1].v : cat.start;
     }
     const fmtStars = v => String(v).replace('.', ',');
-    function starsHtml(v) {
-        return `<span class="pp-stars" role="img" aria-label="${fmtStars(v)} von 5 Sternen"><i style="width:${v * 20}%"></i></span>`;
+    function starsHtml(v, max = 5) {
+        const row = '★'.repeat(max);
+        return `<span class="pp-stars" data-s="${row}" role="img" aria-label="${fmtStars(v)} von ${max} Sternen"><i data-s="${row}" style="width:${v / max * 100}%"></i></span>`;
     }
-    function addVote(name, kind, d) {
-        if (!votes[name]) votes[name] = { lob: [], sol: [] };
-        votes[name][kind].push({ ts: new Date().toISOString(), d });
+    function addVote(name, id, d) {
+        if (!votes[name]) votes[name] = {};
+        if (!votes[name][id]) votes[name][id] = [];
+        votes[name][id].push({ ts: new Date().toISOString(), d });
         saveCurrentPlan(true);
     }
-    function undoVote(name, kind) {
-        const arr = (votes[name] || {})[kind];
+    function undoVote(name, id) {
+        const arr = (votes[name] || {})[id];
         if (!arr || !arr.length) return;
         let last = 0;
         arr.forEach((x, i) => { if (String(x.ts) >= String(arr[last].ts)) last = i; });
         arr.splice(last, 1);
         saveCurrentPlan(true);
     }
+    /** Namen ändern (Stift neben dem Namen); eigene Kategorien lassen sich auch entfernen */
+    async function editCat(cat) {
+        const own = !DEFAULT_CATS.some(c => c.id === cat.id);
+        const buttons = [{ label: 'Abbrechen', value: null }];
+        if (own) buttons.push({ label: 'Entfernen', value: 'del', kind: 'danger' });
+        buttons.push({ label: 'Speichern', value: true, kind: 'primary' });
+        const v = await sheet({
+            title: 'Kategorie umbenennen',
+            text: cat.scope === 'class' ? 'Gilt nur für diese Klasse.' : 'Gilt für alle Klassen.',
+            input: { label: 'Name', value: cat.name },
+            buttons
+        });
+        if (v === 'del') {
+            if (!await ui.confirm(`„${cat.name}“ entfernen?`, cat.scope === 'class' ? 'Die Kategorie verschwindet aus dieser Klasse. Bereits vergebene Sterne bleiben im Hintergrund gespeichert.' : 'Die Kategorie verschwindet aus allen Klassen. Bereits vergebene Sterne bleiben im Hintergrund gespeichert.', 'Entfernen', true)) return false;
+            if (cat.scope === 'class') { classCats = classCats.filter(c => c.id !== cat.id); saveCurrentPlan(true); }
+            else writeGlobalCats(globalCats().filter(c => c.id !== cat.id));
+            return true;
+        }
+        if (typeof v !== 'string' || !v.trim() || v.trim() === cat.name) return false;
+        const rename = list => list.map(c => (c.id === cat.id ? { ...c, name: v.trim().slice(0, 40) } : c));
+        if (cat.scope === 'class') { classCats = rename(classCats); saveCurrentPlan(true); }
+        else writeGlobalCats(rename(globalCats()));
+        return true;
+    }
+    /** „weitere hinzufügen“: Name, Anzahl Sterne, Startwert – für diese Klasse oder alle */
+    async function addCat() {
+        const content = document.createElement('div');
+        content.className = 'pp-catform';
+        const field = (label, el) => {
+            const l = document.createElement('label');
+            l.className = 'pp-field';
+            l.textContent = label;
+            l.appendChild(el);
+            content.appendChild(l);
+            return el;
+        };
+        const nameIn = document.createElement('input');
+        nameIn.type = 'text';
+        nameIn.autocomplete = 'off';
+        nameIn.placeholder = 'z. B. Hausaufgaben, Mitarbeit, Ordnung';
+        field('Name', nameIn);
+        const row = document.createElement('div');
+        row.className = 'pp-catform-row';
+        content.appendChild(row);
+        const sel = (label, opts, value) => {
+            const l = document.createElement('label');
+            l.className = 'pp-field';
+            l.textContent = label;
+            const s2 = document.createElement('select');
+            opts.forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; s2.appendChild(o); });
+            s2.value = String(value);
+            l.appendChild(s2);
+            row.appendChild(l);
+            return s2;
+        };
+        const maxSel = sel('Sterne', [3, 4, 5, 6, 7, 8, 9, 10].map(n => [n, `${n} Sterne`]), 5);
+        let startSel = null;
+        const fillStart = () => {
+            const max = Number(maxSel.value);
+            const keep = startSel ? Math.min(max, Number(startSel.value)) : Math.min(3, max);
+            const opts = [];
+            for (let v = 0; v <= max; v += 0.5) opts.push([v, fmtStars(v)]);
+            if (!startSel) startSel = sel('Startwert für alle', opts, keep);
+            else { startSel.textContent = ''; opts.forEach(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; startSel.appendChild(o); }); startSel.value = String(keep); }
+        };
+        fillStart();
+        maxSel.addEventListener('change', fillStart);
+        setTimeout(() => nameIn.focus(), 250);
+        const where = await sheet({
+            title: 'Neue Kategorie hinzufügen',
+            content,
+            className: 'pp-sheet-cat',
+            buttons: [{ label: 'Nur diese Klasse', value: 'class' }, { label: 'Für alle Klassen', value: 'all', kind: 'primary' }]
+        });
+        if (where !== 'class' && where !== 'all') return false;
+        const name = nameIn.value.trim();
+        if (!name) { showToast('Bitte einen Namen eingeben.', 'warn', 2500); return false; }
+        if (allCats().some(c => c.name.toLocaleLowerCase('de') === name.toLocaleLowerCase('de'))) { showToast(`„${name}“ gibt es schon.`, 'warn', 2500); return false; }
+        const cat = normCat({ id: `c-${newId()}`, name, max: Number(maxSel.value), start: Number(startSel.value) });
+        if (where === 'class') { classCats = [...classCats, cat]; saveCurrentPlan(true); }
+        else writeGlobalCats([...globalCats(), cat]);
+        showToast(`„${name}“ hinzugefügt${where === 'class' ? ' – nur für diese Klasse' : ' – für alle Klassen'}.`, 'ok', 2500);
+        return true;
+    }
     function renderVotes(name) {
         const box = document.createElement('section');
         box.className = 'pp-votes';
         const draw = () => {
             box.textContent = '';
-            Object.entries(VOTE_KINDS).forEach(([kind, label]) => {
-                const v = starsOf(name, kind);
+            allCats().forEach(cat => {
+                const v = starsOf(name, cat);
+                const label = cat.name;
                 const row = document.createElement('div');
                 row.className = 'pp-vote';
-                row.dataset.kind = kind;
-                row.innerHTML = `<span class="pp-vote-label">${label}</span>${starsHtml(v)}<span class="pp-vote-num">${fmtStars(v)}</span>`;
+                row.dataset.kind = cat.id;
+                row.innerHTML = `<span class="pp-vote-label"><span>${escapeHtml(label)}</span></span>${starsHtml(v, cat.max)}<span class="pp-vote-num">${fmtStars(v)}</span>`;
+                const pen = document.createElement('button');
+                pen.type = 'button';
+                pen.className = 'pp-vote-edit';
+                pen.title = 'Namen ändern';
+                pen.setAttribute('aria-label', `${label} umbenennen`);
+                pen.innerHTML = icon('edit');
+                pen.addEventListener('click', async () => { if (await editCat(cat)) draw(); });
+                row.querySelector('.pp-vote-label').appendChild(pen);
                 const btn = (ic, d, title) => {
                     const b = document.createElement('button');
                     b.type = 'button';
@@ -5934,18 +6123,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     b.title = title;
                     b.setAttribute('aria-label', `${label}: ${title}`);
                     b.innerHTML = icon(ic);
-                    b.addEventListener('click', () => { addVote(name, kind, d); draw(); });
+                    b.addEventListener('click', () => { addVote(name, cat.id, d); draw(); });
                     return b;
                 };
                 row.append(btn('thumbDown', -1, 'Daumen runter (−½ Stern)'), btn('thumbUp', 1, 'Daumen hoch (+½ Stern)'));
-                if (((votes[name] || {})[kind] || []).length) {
+                if (((votes[name] || {})[cat.id] || []).length) {
                     const u = document.createElement('button');
                     u.type = 'button';
                     u.className = 'pp-iconbtn pp-vote-undo';
                     u.title = 'Letzte Stimme zurücknehmen';
                     u.setAttribute('aria-label', `${label}: letzte Stimme zurücknehmen`);
                     u.innerHTML = icon('undo');
-                    u.addEventListener('click', () => { undoVote(name, kind); draw(); });
+                    u.addEventListener('click', () => { undoVote(name, cat.id); draw(); });
                     row.appendChild(u);
                 } else {
                     const sp = document.createElement('span');
@@ -5954,6 +6143,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 box.appendChild(row);
             });
+            const more = document.createElement('button');
+            more.type = 'button';
+            more.className = 'pp-vote-more';
+            more.id = 'add-cat';
+            more.textContent = 'weitere hinzufügen';
+            more.addEventListener('click', async () => { if (await addCat()) draw(); });
+            box.appendChild(more);
         };
         draw();
         return box;
@@ -5965,22 +6161,22 @@ document.addEventListener('DOMContentLoaded', () => {
             .sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
     }
     /** kleiner Verlauf (Stufenlinie) über das Schuljahr */
-    function voteChart(name, kind) {
-        const s = voteSeries(name, kind);
+    function voteChart(name, cat, idx = 0) {
+        const s = voteSeries(name, cat);
         const W = 300, H = 110, L = 22, R = 8, T = 8, B = 20;
         const t0 = Math.min(fromIso(schoolYearStart()).getTime(), s.length ? new Date(s[0].ts).getTime() : Infinity);
         const t1 = Math.max(Date.now(), t0 + 864e5);
         const x = ts => L + (Math.min(t1, Math.max(t0, new Date(ts).getTime())) - t0) / (t1 - t0) * (W - L - R);
-        const y = v => T + (5 - v) / 5 * (H - T - B);
+        const y = v => T + (cat.max - v) / cat.max * (H - T - B);
         let grid = '';
-        for (let v = 0; v <= 5; v++) grid += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" class="g"/><text x="${L - 6}" y="${y(v) + 3.5}" text-anchor="end">${v}</text>`;
-        let d = `M${x(t0)},${y(3)}`;
+        for (let v = 0; v <= cat.max; v++) grid += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" class="g"/><text x="${L - 6}" y="${y(v) + 3.5}" text-anchor="end">${v}</text>`;
+        let d = `M${x(t0)},${y(cat.start)}`;
         s.forEach(p => { d += ` H${x(p.ts).toFixed(1)} V${y(p.v).toFixed(1)}`; });
         d += ` H${x(t1)}`;
         const m = t => new Date(t).toLocaleDateString('de-DE', { month: 'short' });
         const dots = s.map(p => `<circle cx="${x(p.ts).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="2.6"/>`).join('');
-        return `<figure class="pp-chart pp-chart-${kind}"><figcaption>${VOTE_KINDS[kind]} <b>${fmtStars(starsOf(name, kind))} ★</b> · ${s.length} Stimme${s.length === 1 ? '' : 'n'}</figcaption>`
-            + `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Verlauf ${VOTE_KINDS[kind]}">${grid}<path d="${d}" class="l"/>${dots}`
+        return `<figure class="pp-chart pp-chart-c${idx % 4}"><figcaption>${escapeHtml(cat.name)} <b>${fmtStars(starsOf(name, cat))} ★</b> · ${s.length} Stimme${s.length === 1 ? '' : 'n'}</figcaption>`
+            + `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Verlauf ${escapeHtml(cat.name)}">${grid}<path d="${d}" class="l"/>${dots}`
             + `<text x="${L}" y="${H - 5}">${m(t0)}</text><text x="${W - R}" y="${H - 5}" text-anchor="end">heute</text></svg></figure>`;
     }
     function statsDetail(name) {
@@ -5989,10 +6185,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const grades = gradeNotes(name);
         const per = observ.periods.filter(p => p.name === name).sort((a, b) => a.start.localeCompare(b.start));
         const t = todayIso();
-        let html = `<div class="pp-chart-row">${voteChart(name, 'lob')}${voteChart(name, 'sol')}</div>`;
+        let html = `<div class="pp-chart-row">${allCats().map((c, i) => voteChart(name, c, i)).join('')}</div>`;
         html += `<h4>Noten (${grades.length})</h4>`;
         html += grades.length
-            ? `<ul class="pp-stat-grades">${grades.map(n => `<li><span>${escapeHtml(new Date(n.ts).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }))}</span><b>${escapeHtml(n.grade)}</b><em>${escapeHtml(n.lesson || '–')}</em></li>`).join('')}</ul>`
+            ? `<ul class="pp-stat-grades">${grades.map(n => `<li><span>${escapeHtml(new Date(n.ts).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }))}</span><b>${escapeHtml(n.grade)}</b><em>${n.kind ? `<small class="pp-note-kindtag">${escapeHtml(n.kind)}</small> ` : ''}${escapeHtml(n.lesson || '–')}</em></li>`).join('')}</ul>`
             : '<p class="pp-hint">Noch keine Noten eingetragen.</p>';
         html += `<h4>Beobachtungen (${per.length})</h4>`;
         html += per.length
@@ -6009,8 +6205,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 phases: per.length,
                 days: per.reduce((s, p) => s + observedDays(p), 0),
                 grades: gradeNotes(n).length,
-                lob: starsOf(n, 'lob'),
-                sol: starsOf(n, 'sol'),
+                stars: allCats().map(c => starsOf(n, c)),
                 now: isObserved(n)
             };
         });
@@ -6027,21 +6222,21 @@ document.addEventListener('DOMContentLoaded', () => {
         wrap.className = 'pp-stat-wrap';
         const table = document.createElement('table');
         table.className = 'pp-stat-table';
-        table.innerHTML = '<thead><tr><th>Name</th><th title="Beobachtungsphasen">Beob.</th><th title="beobachtete Schultage">Tage</th><th>Noten</th><th>Lob</th><th>SOL</th></tr></thead>';
+        table.innerHTML = '<thead><tr><th>Name</th><th title="Beobachtungsphasen">Beob.</th><th title="beobachtete Schultage">Tage</th><th>Noten</th>' + allCats().map(c => `<th title="${escapeHtml(c.name)} (0–${c.max} Sterne)">${escapeHtml(c.name)}</th>`).join('') + '</tr></thead>';
         const tb = document.createElement('tbody');
         rows.forEach(r => {
             const tr = document.createElement('tr');
             tr.className = 'pp-stat-row';
             tr.tabIndex = 0;
             tr.setAttribute('aria-expanded', 'false');
-            tr.innerHTML = `<td>${r.now ? icon('eye') : ''}${escapeHtml(fullName(r.name))}</td><td>${r.phases}</td><td>${r.days}</td><td>${r.grades}</td><td>${fmtStars(r.lob)}</td><td>${fmtStars(r.sol)}</td>`;
+            tr.innerHTML = `<td>${r.now ? icon('eye') : ''}${escapeHtml(fullName(r.name))}</td><td>${r.phases}</td><td>${r.days}</td><td>${r.grades}</td>${r.stars.map(v => `<td>${fmtStars(v)}</td>`).join('')}`;
             let open = null;
             const toggle = () => {
                 if (open) { open.remove(); open = null; tr.setAttribute('aria-expanded', 'false'); return; }
                 open = document.createElement('tr');
                 open.className = 'pp-stat-open';
                 const td = document.createElement('td');
-                td.colSpan = 6;
+                td.colSpan = 4 + allCats().length;
                 td.appendChild(statsDetail(r.name));
                 open.appendChild(td);
                 tr.after(open);
@@ -6056,7 +6251,7 @@ document.addEventListener('DOMContentLoaded', () => {
         content.appendChild(wrap);
         const hint = document.createElement('p');
         hint.className = 'pp-hint';
-        hint.textContent = 'Zeile antippen: Noten mit Datum und Unterrichtsnotiz, Beobachtungszeiträume und Verlauf von Lob/Tadel und SOL.';
+        hint.textContent = 'Zeile antippen: Noten mit Datum und Unterrichtsnotiz, Beobachtungszeiträume und Verlauf der Sterne.';
         content.appendChild(hint);
         await sheet({ title: `Statistik · ${currentName}`, content, className: 'pp-sheet-wide', buttons: [{ label: 'Schließen', value: null, kind: 'primary' }] });
     }
