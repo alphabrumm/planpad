@@ -142,6 +142,24 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
 .pp-topbar-spacer { flex: 1; }
 .pp-topbar-left > .pp-iconbtn, .pp-toolgroup { flex: none; }
 .pp-toolgroup { display: flex; align-items: center; gap: 2px; }
+.pp-tooldiv { width: 1px; height: 22px; background: var(--line); margin: 0 6px 0 2px; flex: none; }
+.pp-bulb .pp-icon { width: 24px; height: 24px; }
+button, select { -webkit-touch-callout: none; }
+button { -webkit-user-select: none; user-select: none; }
+.pp-tip {
+    position: fixed; z-index: 400; max-width: min(300px, calc(100vw - 16px)); padding: 12px 36px 12px 14px;
+    background: var(--ink); color: var(--surface); border-radius: var(--radius-m); box-shadow: var(--shadow-lg);
+    font-size: 14px; line-height: 1.4;
+}
+.pp-tip b { display: block; font-size: 14.5px; margin-bottom: 2px; }
+.pp-tip p { margin: 0; opacity: 0.9; }
+.pp-tip::after { content: ""; position: absolute; left: var(--arrow, 50%); width: 12px; height: 12px; background: var(--ink); transform: translateX(-50%) rotate(45deg); }
+.pp-tip.is-below::after { top: -5px; }
+.pp-tip.is-above::after { bottom: -5px; }
+.pp-tip-close { position: absolute; top: 6px; right: 6px; width: 28px; height: 28px; display: grid; place-items: center; color: var(--surface); opacity: 0.8; border-radius: 999px; }
+.pp-tip-close .pp-icon { width: 16px; height: 16px; }
+.pp-tip-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 10px; padding: 6px 10px 6px 8px; border-radius: 999px; background: rgba(255,255,255,0.14); color: var(--surface); font-weight: 700; font-size: 14px; }
+.pp-tip-link .pp-icon { width: 18px; height: 18px; }
 
 .pp-iconbtn {
     position: relative;
@@ -1639,4 +1657,22 @@ button:focus-visible, input:focus-visible, textarea:focus-visible {
     #print-root .teacher { border-color: #333; color: #333; background: #fff; }
     #print-root.no-photos .square.has-photo { background-image: none !important; padding: 4px; }
     #print-root.no-photos .square.has-photo .seat-name { position: static; background: none; color: #000; font-size: 13px; white-space: normal; padding: 0; }
+}
+
+/* iPhone: Glühbirne ohne Trennstrich, schmal */
+@media (max-width: 600px) {
+    .pp-tooldiv { display: none; }
+    .pp-bulb { width: 32px; min-width: 32px; padding: 0; }
+    .pp-bulb .pp-icon { width: 21px; height: 21px; }
+}
+@media (max-width: 600px) {
+    .pp-seating-action, .pp-addseat { flex: none; }
+    .pp-addseat { width: 32px; }
+    .pp-seating-action { width: 30px; }
+    .pp-seating-mobile { flex: none; }
+    .pp-seating-mobile select { min-width: 64px; max-width: 18vw; }
+    .pp-plan-name { max-width: 13vw; }
+    .pp-topbar-left { min-width: 0; }
+    .pp-plan { min-width: 0; flex: 0 1 auto; max-width: 21vw; }
+    .pp-topbar #menu-btn, .pp-topbar #sidebar-btn, .pp-topbar #undo-btn { width: 38px; min-width: 38px; }
 }

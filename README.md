@@ -98,3 +98,9 @@ löscht die lokal gespeicherten Pläne nicht nach längerer Nichtnutzung.
 - Neue Notiz: Unterrichtsnotiz 2 Zeilen, „Bemerkung“ entfällt (alte Bemerkungen bleiben sichtbar). Neben der
   schmalen „Note“ das Dropdown „Art“: Beitrag (Standard), Beobachtung, Präsentation, „+ Art ergänzen …“ (eigene
   Arten gelten sofort für alle Klassen, `localStorage['planpad.noteKinds']`).
+
+## Hilfe (ab 1.36.0)
+- Gelbe Glühbirne oben (links neben Rückgängig): Hinweis „Finger länger als 1 Sekunde auf einen Button legen“
+  und „Handbuch öffnen“. Die großen Handbuch-Buttons in der Seitenleiste entfallen.
+- Langes Drücken (≥ 1 s) auf Buttons und Auswahlmenüs zeigt eine Erklärung (Texte in `TIPS`, sonst title/aria-label);
+  der Button wird dabei nicht ausgelöst. Schließen mit ×.

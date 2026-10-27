@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.35.0';
+    const VERSION = '1.36.0';
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
@@ -73,6 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
         broom: '<path d="M21 3l-6.4 6.4"/><path d="M12.6 8.4l3 3"/><path d="M12.6 8.4l-1.8 1.8M15.6 11.4l-1.8 1.8"/><path d="M10.8 10.2c-2.7.4-5.8 2.1-7.8 5.9l1.9 1-1.2 2 2.3.2.2 2.3 2-1.2 1 1.9c3.8-2 5.5-5.1 5.9-7.8z"/><path d="M9.6 13.4l-3.4 3.4M11.6 14.4l-2.6 2.6"/>',
         listImport: '<path d="M4 6h7M4 11h7M4 16h5"/><path d="M17 20V8"/><path d="M13 12l4-4 4 4"/>',
         learn: '<path d="M3 8l9-4 9 4-9 4z"/><path d="M7 10v5c0 1.5 2.2 3 5 3s5-1.5 5-3v-5"/><path d="M21 8v6"/>',
+        bulb: '<path d="M9.5 18.5h5M10.5 21.5h3"/><path d="M12 2.5a6.3 6.3 0 0 0-3.8 11.3c.8.6 1.3 1.5 1.3 2.5v.2h5v-.2c0-1 .5-1.9 1.3-2.5A6.3 6.3 0 0 0 12 2.5z" fill="#FFD43B" stroke="#B8860B"/><path d="M10.2 9.5a2 2 0 0 1 1.8-1.6" stroke="#fff" stroke-width="1.4"/>',
         eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
         thumbUp: '<path d="M7 10v10H4V10z"/><path d="M7 10l4-7a2 2 0 0 1 2.6 1.9L13 9h5.4a2 2 0 0 1 2 2.3l-1.2 7A2 2 0 0 1 17.2 20H7"/>',
         thumbDown: '<path d="M7 14V4H4v10z"/><path d="M7 14l4 7a2 2 0 0 0 2.6-1.9L13 15h5.4a2 2 0 0 0 2-2.3l-1.2-7A2 2 0 0 0 17.2 4H7"/>',
@@ -683,14 +684,15 @@ document.addEventListener('DOMContentLoaded', () => {
             points: [
                 'Manuell: „Klasse anlegen“, die Namen eintippen – ein Kind pro Zeile als „Nachname, Vorname“ – und „Fertig“ tippen: PlanPad stellt Zweiertische auf und verteilt die Klasse.',
                 'Als Import: Lade z. B. im Infoportal Deine Klasse als Liste (Excel-Liste mit Namen) herunter. Dann „Klasse als Liste importieren“ und die Datei auswählen – PlanPad übernimmt alle Namen, stellt Zweiertische auf und verteilt die Klasse.',
-                'Die Datei wird nur im Browser gelesen und nirgends hochgeladen.'
+                'Die Datei wird nur im Browser gelesen und nirgends hochgeladen.',
+                'Zum Ausprobieren: Menü ☰ → „Demoklasse laden“. Hilfe zu jedem Button: Finger länger als 1 Sekunde darauf legen. Die gelbe Glühbirne oben öffnet dieses Handbuch.'
             ]
         },
         {
             title: 'Klassen & Sitzpläne', img: 'help/sitzplaene.webp',
             text: 'Oben steht die geöffnete Klasse, daneben ihre Sitzpläne als Reiter.',
             points: [
-                'Klasse antippen: umbenennen. Neue Klasse, Liste importieren oder wechseln: Menü ☰.',
+                'Klassenname antippen (▾): Klasse wechseln, umbenennen oder neu anlegen. Liste importieren, sichern: Menü ☰.',
                 'Reiter antippen: zu diesem Sitzplan wechseln – z. B. „Normal“, „Gruppenarbeit“, „Prüfung“.',
                 '„+ Sitzplan ergänzen“ legt einen weiteren Sitzplan an (Kopie oder leer).',
                 'Namen, Regeln, Notizen und Fotos gelten für alle Sitzpläne der Klasse.',
@@ -830,6 +832,158 @@ document.addEventListener('DOMContentLoaded', () => {
         return closed;
     }
     document.querySelectorAll('[data-help]').forEach(b => b.addEventListener('click', () => openHelp(b.id === 'help-btn-notes' ? HELP_PAGES.findIndex(p => p.title === 'Notizen-Modus') : 0)));
+
+    /* ==================================================
+       Hilfe: Glühbirne oben + langes Drücken (> 1 s) auf Buttons und Dropdowns
+       ================================================== */
+    const TIPS = {
+        'menu-btn': 'Menü: Klassen anlegen, importieren und sichern, Demoklasse, Drucken, Datenschutz.',
+        'sidebar-btn': 'Seitenleiste ein- oder ausblenden – mehr Platz für den Raum.',
+        'plan-btn': 'Klasse wechseln: Liste aller Klassen. Dort auch umbenennen und neue Klasse anlegen.',
+        'seating-select': 'Sitzplan dieser Klasse wählen.',
+        'seating-action': 'Sitzplan umbenennen oder löschen. Bei offenem Schloss: Änderungen übernehmen oder verwerfen.',
+        'add-seating-btn': 'Weiteren Sitzplan für diese Klasse anlegen, z. B. für Gruppenarbeit oder Prüfungen.',
+        'help-bulb': 'Hilfe: Tipp zum langen Drücken und Handbuch.',
+        'undo-btn': 'Letzte Änderung rückgängig machen.',
+        'redo-btn': 'Rückgängig gemachte Änderung wiederholen.',
+        'save-btn': 'Diese Klasse als Datei sichern (optional mit Passwort). Der Punkt zeigt: seit der letzten Sicherung geändert.',
+        'edit-names-btn': 'Namensliste bearbeiten – ein Kind pro Zeile als „Nachname, Vorname“.',
+        'names-done-btn': 'Namensliste übernehmen.',
+        'toggle-pills': 'Kärtchen aller Kinder ein- oder ausblenden. Kärtchen auf einen Tisch ziehen = Platz zuweisen.',
+        'shuffle-btn': 'Mix: Kinder an den Tischen zufällig neu verteilen – Trennen und Koppeln werden beachtet.',
+        'demix-btn': 'Demix: Sitzordnung vor dem letzten Mix wiederherstellen.',
+        'class-photo': 'Klassenfoto aufnehmen oder wählen und die Gesichter den Kindern zuordnen – alles nur auf diesem Gerät.',
+        'learn-names': 'Namen lernen: Quiz mit den Fotos der Klasse. Der Rekord steht auf dem Button.',
+        'separate-students': 'Trennen: Kinder wählen, die nicht nebeneinander, hintereinander oder schräg sitzen sollen.',
+        'couple-students': 'Koppeln: Kinder wählen, die am selben Tisch bzw. Gruppentisch sitzen sollen.',
+        'cancel-selection': 'Auswahl abbrechen.',
+        'finish-separation': 'Regel speichern.',
+        'fix-conflicts': 'Verletzte Regeln automatisch lösen – mit möglichst wenig Umsetzen.',
+        'layout-btn': 'Layouts: Tische in Reihen, Paaren, Gruppen, U-Form oder Prüfungsform aufstellen; eigene Vorlagen speichern.',
+        'add-square': 'Neuen Tisch in den Raum stellen.',
+        'clear-seats': 'Pinsel: Kinder von den Tischen lösen – alle oder einzelne. Ist ein Tisch gewählt, nur diesen.',
+        'clear-tables': 'Papierkorb: Tische löschen – alle oder einzelne. Ist ein Tisch gewählt, nur diesen.',
+        'distribute': 'A–B: Tische in Reihen nach Nachnamen sortieren, Namen zweizeilig. Nochmal tippen: alles wie vorher.',
+        'view-groups': 'Gruppen-Ansicht: Namen, Plätze, Mix und Regeln bearbeiten.',
+        'view-notes': 'Notizen-Ansicht: Tisch antippen und Notiz, Note und Sterne eintragen.',
+        'zoom-out': 'Raum verkleinern.',
+        'zoom-in': 'Raum vergrößern.',
+        'zoom-fit': 'Ganzen Raum einpassen. Die Zahl zeigt die aktuelle Größe.',
+        'present-btn': 'Präsentieren: Sitzplan bildschirmfüllend für die Klasse – ohne Notizen, Augen und Punkte.',
+        'present-exit': 'Präsentieren beenden.',
+        'drawer-close': 'Menü schließen.',
+        'new-plan-btn': 'Neue, leere Klasse anlegen.',
+        'new-plan-csv-btn': 'Klasse aus einer Excel- oder CSV-Liste anlegen, z. B. aus dem Infoportal.',
+        'duplicate-plan-btn': 'Kopie dieser Klasse anlegen.',
+        'demo-btn': 'Demoklasse laden: zeigt mit 15 Pixel-Kindern, was PlanPad kann.',
+        'import': 'Sicherungsdatei (.json) öffnen und die Klassen übernehmen.',
+        'export-current': 'Geöffnete Klasse als Datei sichern.',
+        'export': 'Alle Klassen in einer Datei sichern.',
+        'delete-all-btn': 'Alle Daten von diesem Gerät löschen, z. B. am Schuljahresende.',
+        'clear-faces': 'Alle Fotos dieser Klasse löschen.',
+        'print-btn': 'Sitzplan drucken oder als PDF sichern.',
+        'obs-btn': 'Wer wird gerade beobachtet und wie lange noch? Dort auch neue Beobachtungen planen.',
+        'stats-btn': 'Statistik: Beobachtungen, Noten und Sterne je Kind – Zeile antippen für Details und Verlauf.',
+        'add-cat': 'Eigene Sterne-Kategorie anlegen – für diese Klasse oder alle.',
+        'class-note-add': 'Notiz zur ganzen Klasse anlegen, z. B. Stoff, Hausaufgabe, Termin.',
+        'mark-all-read': 'Alle neuen Notizen als gelesen abhaken.'
+    };
+    let tipBox = null;
+    function closeTip() {
+        if (!tipBox) return;
+        tipBox.remove();
+        tipBox = null;
+    }
+    function tipLabel(el) {
+        const t = (el.getAttribute('aria-label') || '').trim() || (el.tagName === 'SELECT' ? '' : el.textContent.replace(/\s+/g, ' ').trim()) || (el.title || '').trim();
+        return t.length > 60 ? t.slice(0, 57) + '…' : t;
+    }
+    function showTip(anchor, { title = '', text = '', extra = null } = {}) {
+        closeTip();
+        const box = document.createElement('div');
+        box.className = 'pp-tip';
+        box.setAttribute('role', 'tooltip');
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'pp-tip-close';
+        x.setAttribute('aria-label', 'Hinweis schließen');
+        x.innerHTML = icon('close');
+        x.addEventListener('click', closeTip);
+        box.appendChild(x);
+        if (title) { const b = document.createElement('b'); b.textContent = title; box.appendChild(b); }
+        if (text) { const p = document.createElement('p'); p.textContent = text; box.appendChild(p); }
+        if (extra) box.appendChild(extra);
+        document.body.appendChild(box);
+        const r = anchor.getBoundingClientRect();
+        const w = box.offsetWidth, h = box.offsetHeight;
+        const left = Math.max(8, Math.min(r.left + r.width / 2 - w / 2, window.innerWidth - w - 8));
+        const below = r.bottom + 8 + h < window.innerHeight - 8;
+        box.style.left = `${left}px`;
+        box.style.top = `${below ? r.bottom + 8 : Math.max(8, r.top - h - 8)}px`;
+        box.classList.add(below ? 'is-below' : 'is-above');
+        box.style.setProperty('--arrow', `${Math.max(14, Math.min(w - 14, r.left + r.width / 2 - left))}px`);
+        tipBox = box;
+    }
+    function helpTipFor(el) {
+        const title = tipLabel(el);
+        let text = TIPS[el.id] || el.dataset.tip || '';
+        if (!text && el.title && el.title.trim() !== title) text = el.title.trim();
+        if (!text && !title) text = 'Für diesen Button gibt es keine Beschreibung.';
+        return { title: title || 'Button', text };
+    }
+    // Glühbirne: Hinweis + Handbuch
+    on('help-bulb', 'click', () => {
+        if (tipBox && tipBox.dataset.bulb) { closeTip(); return; }
+        const extra = document.createElement('button');
+        extra.type = 'button';
+        extra.className = 'pp-tip-link';
+        extra.id = 'open-manual';
+        extra.innerHTML = `${icon('book')}<span>Handbuch öffnen</span>`;
+        extra.addEventListener('click', () => {
+            closeTip();
+            openHelp(notesViewActive() ? Math.max(0, HELP_PAGES.findIndex(p => p.title === 'Notizen-Modus')) : 0);
+        });
+        showTip($('help-bulb'), { title: 'Hilfe zu jedem Button', text: 'Lege den Finger länger als 1 Sekunde auf einen Button oder ein Auswahlmenü – dann erscheint eine kurze Erklärung.', extra });
+        tipBox.dataset.bulb = '1';
+    });
+    // langes Drücken
+    {
+        let timer = null, start = null, target = null, fired = false;
+        const HOLD = 1000;
+        const cancel = () => { clearTimeout(timer); timer = null; target = null; };
+        document.addEventListener('pointerdown', e => {
+            if (tipBox && !tipBox.contains(e.target)) closeTip();
+            const el = e.target.closest && e.target.closest('button, select');
+            if (!el || el.closest('.pp-tip') || el.disabled && el.tagName === 'SELECT') return;
+            fired = false;
+            target = el;
+            start = { x: e.clientX, y: e.clientY };
+            clearTimeout(timer);
+            timer = setTimeout(() => {
+                if (!target) return;
+                fired = true;
+                if (target.tagName === 'SELECT') target.blur();
+                showTip(target, helpTipFor(target));
+                if (navigator.vibrate) { try { navigator.vibrate(12); } catch { /* egal */ } }
+                timer = null;
+            }, HOLD);
+        }, true);
+        document.addEventListener('pointermove', e => {
+            if (timer && start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 10) cancel();
+        }, true);
+        document.addEventListener('pointerup', cancel, true);
+        document.addEventListener('pointercancel', cancel, true);
+        // der Klick nach dem langen Drücken löst den Button NICHT aus
+        document.addEventListener('click', e => {
+            if (!fired) return;
+            const el = e.target.closest && e.target.closest('button, select');
+            if (el && !el.closest('.pp-tip')) { e.preventDefault(); e.stopPropagation(); }
+            fired = false;
+        }, true);
+        document.addEventListener('contextmenu', e => { if (e.target.closest && e.target.closest('button, select')) e.preventDefault(); }, true);
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTip(); });
+        window.addEventListener('resize', closeTip);
+    }
 
     /* ==================================================
        Namen lernen: Foto zeigen, aus 4 Namen den richtigen wählen (nur lokal)
