@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.38.0';
+    const VERSION = '1.38.1';
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
@@ -6644,7 +6644,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (Array.isArray(v)) return v.map(x => resolveDemoDates(x, f));
         if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, resolveDemoDates(x, f)]));
         if (typeof v !== 'string' || v[0] !== '@') return v;
-        let m = v.match(/^@sd(-?\d+)$/);
+        let m = v.match(/^@sdx-(\d+)$/);            // ungestaucht (laufende Beobachtungen der Demo)
+        if (m) return schoolDaysAgo(Number(m[1]));
+        m = v.match(/^@sd(-?\d+)$/);
         if (m) return schoolDaysAgo(Math.round(-Number(m[1]) * f));
         m = v.match(/^@s(\d+)$/);
         if (m) return addSchoolDays(todayIso(), Number(m[1]));
@@ -6664,9 +6666,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch('demo/demo.json', { cache: 'no-cache' });
             if (!res.ok) throw new Error(res.status);
             data = resolveDemoDates(await res.json());
-            // abgeschlossene Beobachtungen dauern auch gestaucht 10 Schultage
+            // Beobachtungen dauern auch gestaucht 10 Schultage
             Object.values(data.plans || {}).forEach(pl => ((pl.observ || {}).periods || []).forEach(p => {
-                if (p.done && p.end === '@after') p.end = addSchoolDays(p.start, OBS_DAYS);
+                if (p.end === '@after') p.end = addSchoolDays(p.start, OBS_DAYS);
             }));
         } catch (err) {
             console.warn('Demo:', err);
