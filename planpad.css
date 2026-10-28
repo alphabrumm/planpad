@@ -1716,3 +1716,49 @@ button { -webkit-user-select: none; user-select: none; }
     box-shadow: 0 0 0 2px var(--surface);
 }
 .pp-accent-dot[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--ink); }
+
+/* Fehlzeiten */
+.pp-absbtn {
+    display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 10px; border-radius: var(--radius-m); color: var(--ink);
+}
+.pp-absbtn .pp-icon { width: 21px; height: 21px; }
+.pp-absbtn-div { width: 1px; height: 20px; background: var(--line); }
+.pp-absbtn:active { background: var(--surface-2); }
+@media (hover: hover) { .pp-absbtn:hover { background: var(--surface-2); } }
+.pp-table-tools .pp-tooldiv { margin: 0 4px; }
+.square.is-absent { filter: grayscale(1); opacity: 0.55; }
+.seat-abs {
+    position: absolute; right: 3px; bottom: 3px; width: 22px; height: 22px; display: grid; place-items: center; z-index: 2;
+    border-radius: 999px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow-s); pointer-events: none;
+}
+.square.is-late .seat-abs { color: #C0571B; }
+.seat-abs .pp-icon { width: 15px; height: 15px; }
+.square.has-photo .seat-abs { bottom: auto; top: 3px; right: 3px; }
+.pp-app.picking-absent .square.is-picked::before { content: "✓"; }
+.presenting .seat-abs { display: none; }
+.presenting .square.is-absent { filter: none; opacity: 1; }
+@media print { .seat-abs { display: none !important; } .square.is-absent { filter: none !important; opacity: 1 !important; } }
+.pp-absent { margin: 10px 0 4px; padding: 10px 12px; border-radius: var(--radius-m); background: var(--surface-2); }
+.pp-absent-head { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+.pp-absent-head .pp-icon { width: 18px; height: 18px; color: var(--ink-2); }
+.pp-absent-head span { margin-left: auto; color: var(--ink-2); font-size: 13px; }
+.pp-absent-list { list-style: none; margin: 6px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.pp-absent-list li { display: flex; align-items: center; gap: 8px; font-size: 13.5px; min-height: 30px; }
+.pp-absent-list li span { color: var(--ink-2); min-width: 72px; font-variant-numeric: tabular-nums; }
+.pp-absent-list em { font-style: normal; flex: 1; }
+.pp-absent-del { width: 28px; height: 28px; color: var(--ink-2); }
+.pp-absent-del .pp-icon { width: 14px; height: 14px; }
+.pp-miss-txt { color: var(--danger); font-weight: 700; }
+.pp-late-txt { color: #C0571B; font-weight: 700; }
+:root[data-effective="dark"] .pp-late-txt, :root[data-effective="dark"] .square.is-late .seat-abs { color: #F6A56E; }
+/* Raumleiste etwas kompakter, damit sie auf dem iPad (quer) einzeilig bleibt */
+.pp-roombar .pp-iconbtn { width: 40px; min-width: 40px; }
+.pp-roombar .pp-absbtn { padding: 0 7px; gap: 5px; }
+.pp-absdays { margin: 0 0 12px; padding: 8px 10px 10px; border-radius: var(--radius-m); background: var(--surface-2); }
+.pp-absdays-head { display: flex; align-items: center; gap: 4px; font-size: 14px; }
+.pp-absdays-head .pp-icon { width: 18px; height: 18px; color: var(--ink-2); }
+.pp-absdays-head b { margin-right: auto; margin-left: 2px; }
+.pp-absdays-head .pp-iconbtn { width: 30px; height: 30px; font-size: 20px; font-weight: 700; color: var(--accent); }
+.pp-absdays-head .pp-iconbtn:disabled { color: var(--line); }
+.pp-absdays-day { min-width: 74px; text-align: center; font-weight: 700; font-size: 13.5px; }
+.pp-absdays p { margin: 4px 0 0; font-size: 13.5px; line-height: 1.45; }

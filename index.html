@@ -23,7 +23,7 @@
                 t === "auto" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : t;
         } catch (e) { }
     </script>
-    <link rel="stylesheet" href="planpad.css?v=1.38.3">
+    <link rel="stylesheet" href="planpad.css?v=1.39.0">
 </head>
 
 <body>
@@ -144,6 +144,9 @@
                         <button class="pp-iconbtn" id="add-square" title="Tisch hinzufügen" aria-label="Tisch hinzufügen" data-icon="plus"></button>
                         <button class="pp-iconbtn" id="clear-seats" title="Alle Tische leeren (Kinder zurück in „Sitzplätze“)" aria-label="Alle Tische von Schüler:innen lösen" data-icon="broom"></button>
                         <button class="pp-iconbtn" id="clear-tables" title="Alle Tische entfernen" aria-label="Alle Tische entfernen" data-icon="trash"></button>
+                        <span class="pp-tooldiv" aria-hidden="true"></span>
+                        <button class="pp-absbtn" id="absent-btn" title="Fehlt heute / zu spät" aria-label="Fehlende Kinder eintragen"><span data-icon="sick"></span><span class="pp-absbtn-div"></span><span data-icon="clock"></span></button>
+                        <button class="pp-iconbtn" id="arrive-btn" title="Kind kommt gerade in den Raum" aria-label="Kinder eintragen, die gerade gekommen sind" data-icon="arrive"></button>
                     </div>
                     <div class="pp-roombar-tools">
                         <button class="pp-iconbtn pp-togglebtn" id="distribute" aria-pressed="false" title="In Reihenfolge sortieren (an/aus)" aria-label="In Reihenfolge sortieren" data-icon="abcorder"></button>
@@ -226,12 +229,12 @@
                 <p class="pp-about"><b>Schuljahresende:</b> Alle Klassen, Fotos, Notizen und Sicherungsdateien müssen am Ende des Schuljahres gelöscht werden. PlanPad erinnert einmal pro Schuljahr daran.</p>
                 <p class="pp-about">Tipp fürs iPad: Teilen → „Zum Home-Bildschirm“. Dann läuft PlanPad auch offline,
                     und Safari löscht die gespeicherten Daten nicht nach längerer Nichtnutzung.</p>
-                <p class="pp-version">Version 1.38.3 · Schrift: Atkinson Hyperlegible (SIL OFL)</p>
+                <p class="pp-version">Version 1.39.0 · Schrift: Atkinson Hyperlegible (SIL OFL)</p>
             </div>
         </aside>
     </div>
 
-    <script src="planpad.js?v=1.38.3"></script>
+    <script src="planpad.js?v=1.39.0"></script>
 </body>
 
 </html>

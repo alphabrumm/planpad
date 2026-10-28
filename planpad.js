@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.38.3';
+    const VERSION = '1.39.0';
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
@@ -96,6 +96,9 @@ document.addEventListener('DOMContentLoaded', () => {
         listImport: '<path d="M4 6h7M4 11h7M4 16h5"/><path d="M17 20V8"/><path d="M13 12l4-4 4 4"/>',
         learn: '<path d="M3 8l9-4 9 4-9 4z"/><path d="M7 10v5c0 1.5 2.2 3 5 3s5-1.5 5-3v-5"/><path d="M21 8v6"/>',
         bulb: '<path d="M9.5 18.5h5M10.5 21.5h3"/><path d="M12 2.5a6.3 6.3 0 0 0-3.8 11.3c.8.6 1.3 1.5 1.3 2.5v.2h5v-.2c0-1 .5-1.9 1.3-2.5A6.3 6.3 0 0 0 12 2.5z" fill="#FFD43B" stroke="#B8860B"/><path d="M10.2 9.5a2 2 0 0 1 1.8-1.6" stroke="#fff" stroke-width="1.4"/>',
+        sick: '<circle cx="12" cy="12" r="8.5"/><path d="M8.4 9.6q1 .9 2 0M13.6 9.6q1 .9 2 0"/><path d="M12 10.6l-1.4 3.1h1.8"/><path d="M14 13.2c-1.6 2-1.6 3.6 0 4.4 1.6-.8 1.6-2.4 0-4.4z" fill="currentColor" stroke-width="1"/>',
+        clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.2V12l3.2 2"/>',
+        arrive: '<path d="M14.5 3.5h5.5v17h-5.5"/><circle cx="17.6" cy="12.2" r=".6" fill="currentColor"/><circle cx="7.4" cy="4.9" r="1.7"/><path d="M3.5 12.3l2.6-2.8h3l2.4 3 2.3.7"/><path d="M7.6 9.6l-1.3 5.2 2.8 2v3.8"/><path d="M6.3 14.8l-2.6 5.7"/>',
         eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
         thumbUp: '<path d="M7 10v10H4V10z"/><path d="M7 10l4-7a2 2 0 0 1 2.6 1.9L13 9h5.4a2 2 0 0 1 2 2.3l-1.2 7A2 2 0 0 1 17.2 20H7"/>',
         thumbDown: '<path d="M7 14V4H4v10z"/><path d="M7 14l4 7a2 2 0 0 0 2.6-1.9L13 15h5.4a2 2 0 0 0 2-2.3l-1.2-7A2 2 0 0 0 17.2 4H7"/>',
@@ -279,6 +282,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let namesSession = null;        // laufende Bearbeitung der Namensliste: { lines, origins }
     let observ = { off: false, count: 4, periods: [] };   // Unterrichtsbeobachtungen der Klasse
     let votes = {};                 // Sterne je Kind und Kategorie
+    let absences = [];              // Fehlzeiten: { id, name, date, from (fehlt seit), to (gekommen), late (Min.) }
     let lastNames = {};             // Name → Nachname (aus der CSV-Liste), für „In Reihenfolge“
 
     /* ==================================================
@@ -573,6 +577,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (lastNames[oldName] !== undefined) { lastNames[newName] = lastNames[oldName]; delete lastNames[oldName]; }
         observ.periods.forEach(p => { if (p.name === oldName) p.name = newName; });
+        absences.forEach(a => { if (a.name === oldName) a.name = newName; });
         if (votes[oldName]) {
             const o = votes[oldName];
             const n = votes[newName] || {};
@@ -752,6 +757,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 'Irgendwo ins Leere tippen: Auswahl aufheben.',
                 'Ganz oben ohne Auswahl: „Beobachten“ (wer gerade beobachtet wird, wie lange noch; „Beobachtungen planen“) und „Statistik“ (Beobachtungen, Noten, Sterne je Kind – Zeile antippen für Details und Verlauf). Darunter die Klassennotizen (gestrichelter Kasten) – „Anlegen“ für Notizen zur ganzen Klasse.',
                 'Unterrichtsbeobachtung: Ist seit dem letzten Öffnen der Klasse eine Beobachtung abgelaufen oder beendet worden, schlägt PlanPad beim Öffnen genauso viele neue Kinder vor (zuerst die noch nie Beobachteten). Ein Zeitraum dauert 10 Schultage, Ferien zählen nicht. Das Auge oben links auf dem Tisch zeigt, wer beobachtet wird – der dunkle Ring, wie viel Zeit noch bleibt (beim Präsentieren unsichtbar).',
+                'Fehlzeiten: Schnupfnase|Uhr in der Raumleiste → Tische der fehlenden Kinder antippen (grau). Kommt jemand später: Tür-Button → Tisch antippen, PlanPad rechnet die Verspätung aus (auf 5 Min. aufgerundet). Ohne Auswahl zeigt die Leiste „Fehlzeiten“ Tag für Tag (‹ ›), beim Kind und in der Statistik stehen alle Einträge.',
                 'Unter der Notiz: Sterne je Kategorie (neue Klassen: Verhalten und Selbstorganisation) – Daumen hoch/runter = ±½ Stern. Stift: umbenennen oder entfernen. „weitere hinzufügen“: eigene Kategorie (bis zu 10) für diese Klasse oder alle.',
                 'Notizen gelten in allen Sitzplänen. Beim Präsentieren werden sie nie angezeigt.'
             ]
@@ -883,6 +889,8 @@ document.addEventListener('DOMContentLoaded', () => {
         'fix-conflicts': 'Verletzte Regeln automatisch lösen – mit möglichst wenig Umsetzen.',
         'layout-btn': 'Layouts: Tische in Reihen, Paaren, Gruppen, U-Form oder Prüfungsform aufstellen; eigene Vorlagen speichern.',
         'add-square': 'Neuen Tisch in den Raum stellen.',
+        'absent-btn': 'Wer fehlt heute? Tische der fehlenden Kinder antippen. Sie werden grau mit Schnupfnase. Fehlzeiten stehen beim Kind und in der Statistik.',
+        'arrive-btn': 'Kind kommt in den Raum: Tisch antippen. Stand es auf „fehlt“, rechnet PlanPad die Verspätung aus (auf 5 Minuten aufgerundet), sonst nur „zu spät“.',
         'clear-seats': 'Pinsel: Kinder von den Tischen lösen – alle oder einzelne. Ist ein Tisch gewählt, nur diesen.',
         'clear-tables': 'Papierkorb: Tische löschen – alle oder einzelne. Ist ein Tisch gewählt, nur diesen.',
         'distribute': 'A–B: Tische in Reihen nach Nachnamen sortieren, Namen zweizeilig. Nochmal tippen: alles wie vorher.',
@@ -1439,6 +1447,16 @@ document.addEventListener('DOMContentLoaded', () => {
             eye.title = 'wird gerade beobachtet';
             eye.innerHTML = `<span class="seat-eye-in">${icon('eye')}</span>`;
             sq.appendChild(eye);
+        }
+        const today = name ? absenceToday(name) : null;
+        sq.classList.toggle('is-absent', Boolean(today && !today.to));
+        sq.classList.toggle('is-late', Boolean(today && today.to));
+        if (today) {
+            const badge = document.createElement('span');
+            badge.className = 'seat-abs';
+            badge.title = today.to ? lateText(today) : 'fehlt heute';
+            badge.innerHTML = icon(today.to ? 'clock' : 'sick');
+            sq.appendChild(badge);
         }
         sq.classList.toggle('has-student', Boolean(name));
         applyFace(sq);
@@ -2424,6 +2442,9 @@ document.addEventListener('DOMContentLoaded', () => {
         picked.clear();
         app.classList.add('is-picking');
         app.classList.toggle('picking-delete', mode === 'delete');
+        app.classList.toggle('picking-absent', mode === 'absent' || mode === 'arrive');
+        // „fehlt“: heute schon Fehlende sind vorausgewählt (abwählen = Versehen korrigieren)
+        if (mode === 'absent') squares.forEach(sq => { const a = sq.dataset.student && absenceToday(sq.dataset.student); if (a && !a.to) picked.add(sq); });
         let bar = $('pick-bar');
         if (!bar) {
             bar = document.createElement('div');
@@ -2441,7 +2462,7 @@ document.addEventListener('DOMContentLoaded', () => {
         renderPicking();
     }
     function togglePick(el) {
-        if (picking === 'unseat' && !el.dataset.student) return;   // leere Tische haben niemanden zu lösen
+        if ((picking === 'unseat' || picking === 'absent' || picking === 'arrive') && !el.dataset.student) return;   // leere Tische: niemand da
         if (picked.has(el)) picked.delete(el); else picked.add(el);
         renderPicking();
     }
@@ -2452,10 +2473,24 @@ document.addEventListener('DOMContentLoaded', () => {
         bar.hidden = !picking;
         if (!picking) return;
         const n = picked.size;
+        const ok = bar.querySelector('[data-pick="ok"]');
+        ok.classList.toggle('pp-btn-danger', picking === 'unseat' || picking === 'delete');
+        ok.classList.toggle('pp-btn-primary', picking === 'absent' || picking === 'arrive');
+        if (picking === 'absent') {
+            bar.querySelector('.pp-pickbar-text').textContent = n ? `${countText(n, 'Kind fehlt', 'Kinder fehlen')} heute` : 'Tische der Kinder antippen, die heute fehlen';
+            ok.textContent = 'Speichern';
+            ok.disabled = false;
+            return;
+        }
+        if (picking === 'arrive') {
+            bar.querySelector('.pp-pickbar-text').textContent = n ? `${countText(n, 'Kind', 'Kinder')} gerade gekommen` : 'Tische der Kinder antippen, die gerade gekommen sind';
+            ok.textContent = n ? `${n} eingetroffen` : 'Eingetroffen';
+            ok.disabled = !n;
+            return;
+        }
         bar.querySelector('.pp-pickbar-text').textContent = picking === 'unseat'
             ? (n ? `${countText(n, 'Kind', 'Kinder')} gewählt` : 'Tische antippen, deren Schüler:innen gelöst werden sollen')
             : (n ? `${countText(n, 'Tisch', 'Tische')} gewählt` : 'Tische antippen, die gelöscht werden sollen');
-        const ok = bar.querySelector('[data-pick="ok"]');
         ok.textContent = picking === 'unseat' ? (n ? `${n} lösen` : 'Lösen') : (n ? `${n} löschen` : 'Löschen');
         ok.disabled = !n;
     }
@@ -2464,10 +2499,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const list = [...picked].filter(sq => squares.includes(sq));
         picking = null;
         picked.clear();
-        app.classList.remove('is-picking', 'picking-delete');
+        app.classList.remove('is-picking', 'picking-delete', 'picking-absent');
         squares.forEach(sq => sq.classList.remove('is-picked'));
         renderPicking();
-        if (!apply || !list.length) return;
+        if (apply && mode === 'absent') { saveAbsent(list.map(sq => sq.dataset.student).filter(Boolean)); return; }
+        if (apply && mode === 'arrive') { saveArrived(list.map(sq => sq.dataset.student).filter(Boolean)); return; }
+        if (!apply || !list.length || mode === 'absent' || mode === 'arrive') return;
         if (list.some(sq => sq.dataset.student === noteStudent)) noteStudent = null;
         if (mode === 'unseat') {
             const names = unseatTables(list);
@@ -3166,6 +3203,8 @@ document.addEventListener('DOMContentLoaded', () => {
         currentSeatingId = (seatings.find(st => st.id === want) || seatings[0]).id;
         const st = currentSeating();
         observ = normObs(plan && plan.observ);
+        absences = normAbsences(plan && plan.absences);
+        absDayView = null;
         votes = normVotes(plan && plan.votes);
         classCats = catsOfPlan(plan);
         applyData({ ...(plan || {}), layout: shownOf(st).layout, squares: shownOf(st).squares });
@@ -3537,6 +3576,7 @@ document.addEventListener('DOMContentLoaded', () => {
             seatingId: currentSeatingId,
             observ: JSON.parse(JSON.stringify(observ)),
             votes: JSON.parse(JSON.stringify(votes)),
+            absences: absences.map(a => ({ ...a })),
             ratingCats: classCats.map(c => ({ ...c })),
             catsV2: true,
             timestamp: new Date().toISOString(),
@@ -4165,6 +4205,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const pl = plans[k];
             const v = pl.votes && typeof pl.votes === 'object' ? Object.values(pl.votes) : [];
             return t + ((pl.observ && Array.isArray(pl.observ.periods)) ? pl.observ.periods.length : 0)
+                + (Array.isArray(pl.absences) ? pl.absences.length : 0)
                 + v.reduce((a, r) => a + Object.values(r || {}).reduce((b, x) => b + (Array.isArray(x) ? x.length : 0), 0), 0);
         }, 0);
         if (noteTotal || extraTotal) {
@@ -4172,7 +4213,7 @@ document.addEventListener('DOMContentLoaded', () => {
             row.className = 'pp-setting-row';
             row.style.margin = '6px 0 10px';
             row.innerHTML = extraTotal
-                ? `<span>Notizen, Sterne und Beobachtungen einschließen (${noteTotal + extraTotal})</span>`
+                ? `<span>Notizen, Sterne, Beobachtungen und Fehlzeiten einschließen (${noteTotal + extraTotal})</span>`
                 : `<span>Notizen einschließen (${noteTotal})</span>`;
             const seg = document.createElement('div');
             seg.className = 'pp-segmented pp-segmented-small';
@@ -4224,7 +4265,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const out = {};
         keys.forEach(k => {
             out[k] = plans[k];
-            if (!withNotes) { const { observ: _o, votes: _v, ...rest } = plans[k]; out[k] = rest; }
+            if (!withNotes) { const { observ: _o, votes: _v, absences: _a, ...rest } = plans[k]; out[k] = rest; }
         });
         const payload = { plans: out };
         const tpls = readTemplates();
@@ -5675,6 +5716,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (title) title.textContent = fresh.length ? countText(fresh.length, 'neue Notiz', 'neue Notizen') : 'Notizen';
             if (count) count.textContent = fresh.length ? '' : (students.length ? `${students.length} SuS` : '');
             if (students.length) notesBody.appendChild(obsBar());
+            const absDays = students.length ? renderAbsenceDays() : null;
+            if (absDays) notesBody.appendChild(absDays);
             renderClassNotes();
             if (fresh.length) {
                 const h = document.createElement('h3');
@@ -5812,6 +5855,7 @@ document.addEventListener('DOMContentLoaded', () => {
         notesBody.appendChild(form);
         noteForm = { lesson, grade, kind };
         notesBody.appendChild(renderVotes(noteStudent));
+        notesBody.appendChild(renderAbsences(noteStudent));
 
         // Bisherige Notizen
         const h = document.createElement('h3');
@@ -6495,6 +6539,152 @@ document.addEventListener('DOMContentLoaded', () => {
         return box;
     }
 
+    /* ----- Fehlzeiten: fehlt (Schnupfnase) und zu spät (Uhr), je Datum ----- */
+    function normAbsences(v) {
+        const okDay = s2 => typeof s2 === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s2);
+        return (Array.isArray(v) ? v : []).filter(a => a && typeof a.name === 'string' && (a.from || a.to)).map(a => {
+            const ts = a.from || a.to;
+            const o = { id: String(a.id || newId()), name: a.name, date: okDay(a.date) ? a.date : isoDay(new Date(ts)), from: a.from || null, to: a.to || null };
+            if (Number.isFinite(a.late)) o.late = a.late;
+            return o;
+        });
+    }
+    const roundUp5 = min => Math.max(5, Math.ceil(min / 5) * 5);
+    function absenceToday(name) {
+        const t = todayIso();
+        return absences.filter(a => a.name === name && a.date === t).sort((a, b) => String(b.from || b.to).localeCompare(String(a.from || a.to)))[0] || null;
+    }
+    function lateText(a) {
+        if (!a.to) return 'gefehlt';
+        return Number.isFinite(a.late) ? `${a.late} Min. zu spät` : 'zu spät';
+    }
+    const fmtTime = ts => new Date(ts).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
+    /** „fehlt“ speichern: neu Gewählte eintragen, abgewählte (heute noch offene) Einträge entfernen */
+    function saveAbsent(names) {
+        absDayView = null;                 // Leiste springt auf den neuesten Tag
+        const t = todayIso(), now = new Date().toISOString();
+        const sel = new Set(names);
+        let added = 0, removed = 0;
+        absences = absences.filter(a => {
+            if (a.date === t && !a.to && !sel.has(a.name)) { removed++; return false; }
+            return true;
+        });
+        sel.forEach(n => {
+            const a = absenceToday(n);
+            if (a && !a.to) return;
+            absences.push({ id: newId(), name: n, date: t, from: now, to: null });
+            added++;
+        });
+        saveCurrentPlan(true);
+        refreshSeatLabels();
+        renderNotes();
+        const open = absences.filter(a => a.date === t && !a.to).length;
+        showToast(open ? `${countText(open, 'Kind fehlt', 'Kinder fehlen')} heute – kommt jemand später, mit dem Tür-Button eintragen.` : (removed ? 'Fehl-Einträge entfernt.' : 'Heute fehlt niemand.'), 'ok', 3500);
+    }
+    /** „gerade gekommen“: Verspätung = Zeit seit „fehlt“, auf 5 Minuten aufgerundet – sonst nur „zu spät“ */
+    function saveArrived(names) {
+        absDayView = null;                 // Leiste springt auf den neuesten Tag
+        const t = todayIso(), nowD = new Date(), now = nowD.toISOString();
+        const parts = [];
+        names.forEach(n => {
+            const a = absenceToday(n);
+            if (a && !a.to) {
+                a.to = now;
+                a.late = roundUp5((nowD - new Date(a.from)) / 60000);
+                parts.push(`${n} (${a.late} Min.)`);
+            } else {
+                absences.push({ id: newId(), name: n, date: t, from: null, to: now });
+                parts.push(`${n} (zu spät)`);
+            }
+        });
+        saveCurrentPlan(true);
+        refreshSeatLabels();
+        renderNotes();
+        if (parts.length) showToast(`Eingetroffen: ${parts.join(', ')}.`, 'ok', 3500);
+    }
+    async function startAbsent() {
+        if (!students.length) { needStudents(); return; }
+        if (!squares.some(sq => sq.dataset.student)) { showToast('Erst Kinder auf Tische setzen.', 'info', 2500); return; }
+        const go = await sheet({
+            title: 'Wer fehlt heute?',
+            text: 'Tippe auf die Tische der Kinder, die heute fehlen, und dann auf „Speichern“. Kommt jemand später, trägst Du ihn mit dem Tür-Button ein – PlanPad rechnet die Verspätung aus.',
+            buttons: [{ label: 'Abbrechen', value: false }, { label: 'Kinder wählen', value: true, kind: 'primary' }]
+        });
+        if (go === true) startPicking('absent');
+    }
+    function startArrive() {
+        if (!students.length) { needStudents(); return; }
+        startPicking('arrive');
+        showToast('Tische der Kinder antippen, die gerade gekommen sind.', 'info', 2500);
+    }
+    on('absent-btn', 'click', startAbsent);
+    on('arrive-btn', 'click', startArrive);
+    function absSummary(name) {
+        const list = absences.filter(a => a.name === name);
+        const missed = list.filter(a => !a.to).length;
+        const late = list.filter(a => a.to);
+        const mins = late.reduce((m, a) => m + (a.late || 0), 0);
+        return { list, missed, late: late.length, mins };
+    }
+    function absLine(a) {
+        return a.to ? (Number.isFinite(a.late) ? `${a.late} Min. zu spät (ab ${fmtTime(a.from)}, da ${fmtTime(a.to)})` : `zu spät (da ${fmtTime(a.to)})`) : 'gefehlt';
+    }
+    /** Schüleransicht: Anwesenheit kompakt, Einträge löschbar */
+    function renderAbsences(name) {
+        const sec = document.createElement('section');
+        sec.className = 'pp-absent';
+        const draw = () => {
+            const s2 = absSummary(name);
+            sec.innerHTML = `<div class="pp-absent-head">${icon('sick')}<b>Fehlzeiten</b><span>${s2.list.length ? `${s2.missed}× gefehlt · ${s2.late}× zu spät${s2.mins ? ` (${s2.mins} Min.)` : ''}` : 'keine'}</span></div>`;
+            if (!s2.list.length) return;
+            const ul = document.createElement('ul');
+            ul.className = 'pp-absent-list';
+            s2.list.slice().sort((a, b) => String(b.from || b.to).localeCompare(String(a.from || a.to))).slice(0, 8).forEach(a => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span>${escapeHtml(fmtDay(a.date))}</span><em class="${a.to ? 'pp-late-txt' : 'pp-miss-txt'}">${escapeHtml(absLine(a))}</em>`;
+                const del = document.createElement('button');
+                del.type = 'button';
+                del.className = 'pp-iconbtn pp-absent-del';
+                del.setAttribute('aria-label', 'Eintrag löschen');
+                del.title = 'Eintrag löschen';
+                del.innerHTML = icon('close');
+                del.addEventListener('click', async () => {
+                    if (!await ui.confirm('Eintrag löschen?', `${fullName(name)}, ${fmtDayLong(a.date)}: ${absLine(a)}`, 'Löschen', true)) return;
+                    absences = absences.filter(x => x.id !== a.id);
+                    saveCurrentPlan(true);
+                    refreshSeatLabels();
+                    draw();
+                });
+                li.appendChild(del);
+                ul.appendChild(li);
+            });
+            sec.appendChild(ul);
+        };
+        draw();
+        return sec;
+    }
+    /** ohne Auswahl: „Wer hat gefehlt?“ – Tag für Tag blättern */
+    let absDayView = null;
+    function renderAbsenceDays() {
+        const days = [...new Set(absences.filter(a => students.includes(a.name)).map(a => a.date))].sort();
+        if (!days.length) return null;
+        if (!absDayView || !days.includes(absDayView)) absDayView = days[days.length - 1];
+        const i = days.indexOf(absDayView);
+        const sec = document.createElement('section');
+        sec.className = 'pp-absdays';
+        const of = absences.filter(a => a.date === absDayView && students.includes(a.name));
+        const miss = of.filter(a => !a.to).map(a => a.name);
+        const late = of.filter(a => a.to).map(a => `${a.name}${Number.isFinite(a.late) ? ` (${a.late} Min.)` : ''}`);
+        sec.innerHTML = `<div class="pp-absdays-head">${icon('sick')}<b>Fehlzeiten</b>
+            <button type="button" class="pp-iconbtn pp-absdays-prev" aria-label="Früherer Tag" ${i ? '' : 'disabled'}>‹</button>
+            <span class="pp-absdays-day">${escapeHtml(absDayView === todayIso() ? 'Heute' : fmtDay(absDayView))}</span>
+            <button type="button" class="pp-iconbtn pp-absdays-next" aria-label="Späterer Tag" ${i < days.length - 1 ? '' : 'disabled'}>›</button></div>
+            <p>${miss.length ? `<span class="pp-miss-txt">Gefehlt:</span> ${escapeHtml(miss.join(', '))}` : ''}${miss.length && late.length ? '<br>' : ''}${late.length ? `<span class="pp-late-txt">Zu spät:</span> ${escapeHtml(late.join(', '))}` : ''}</p>`;
+        sec.querySelector('.pp-absdays-prev').addEventListener('click', () => { absDayView = days[Math.max(0, i - 1)]; renderNotes(); });
+        sec.querySelector('.pp-absdays-next').addEventListener('click', () => { absDayView = days[Math.min(days.length - 1, i + 1)]; renderNotes(); });
+        return sec;
+    }
+
     /* ----- Statistik ----- */
     function gradeNotes(name) {
         return (notesOfPlan(currentPlanId)[name] || []).filter(n => n && String(n.grade || '').trim())
@@ -6530,6 +6720,11 @@ document.addEventListener('DOMContentLoaded', () => {
         html += grades.length
             ? `<ul class="pp-stat-grades">${grades.map(n => `<li><span>${escapeHtml(new Date(n.ts).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' }))}</span><b>${escapeHtml(n.grade)}</b><em>${n.kind ? `<small class="pp-note-kindtag">${escapeHtml(n.kind)}</small> ` : ''}${escapeHtml(n.lesson || '–')}</em></li>`).join('')}</ul>`
             : '<p class="pp-hint">Noch keine Noten eingetragen.</p>';
+        const ab = absSummary(name).list.slice().sort((a, b) => String(a.date).localeCompare(String(b.date)));
+        html += `<h4>Fehlzeiten (${ab.length})</h4>`;
+        html += ab.length
+            ? `<ul class="pp-stat-grades">${ab.map(a => `<li><span>${escapeHtml(fmtDayLong(a.date))}</span><b class="${a.to ? 'pp-late-txt' : 'pp-miss-txt'}">${a.to ? 'spät' : 'fehlt'}</b><em>${escapeHtml(absLine(a))}</em></li>`).join('')}</ul>`
+            : '<p class="pp-hint">Keine Fehlzeiten.</p>';
         html += `<h4>Beobachtungen (${per.length})</h4>`;
         html += per.length
             ? `<ul class="pp-stat-grades">${per.map(p => `<li><span>${escapeHtml(fmtDayLong(p.start))}</span><b>${observedDays(p)} T.</b><em>bis ${escapeHtml(fmtDayLong(p.end))}${!p.done && p.end >= t ? ' · läuft' : ''}</em></li>`).join('')}</ul>`
@@ -6546,6 +6741,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 days: per.reduce((s, p) => s + observedDays(p), 0),
                 grades: gradeNotes(n).length,
                 stars: allCats().map(c => starsOf(n, c)),
+                abs: absSummary(n),
                 now: isObserved(n)
             };
         });
@@ -6562,21 +6758,21 @@ document.addEventListener('DOMContentLoaded', () => {
         wrap.className = 'pp-stat-wrap';
         const table = document.createElement('table');
         table.className = 'pp-stat-table';
-        table.innerHTML = '<thead><tr><th>Name</th><th title="Beobachtungsphasen">Beob.</th><th title="beobachtete Schultage">Tage</th><th>Noten</th>' + allCats().map(c => `<th title="${escapeHtml(c.name)} (0–${c.max} Sterne)">${escapeHtml(c.name)}</th>`).join('') + '</tr></thead>';
+        table.innerHTML = '<thead><tr><th>Name</th><th title="Beobachtungsphasen">Beob.</th><th title="beobachtete Schultage">Tage</th><th>Noten</th><th title="Tage gefehlt">Gefehlt</th><th title="zu spät (Minuten)">Zu spät</th>' + allCats().map(c => `<th title="${escapeHtml(c.name)} (0–${c.max} Sterne)">${escapeHtml(c.name)}</th>`).join('') + '</tr></thead>';
         const tb = document.createElement('tbody');
         rows.forEach(r => {
             const tr = document.createElement('tr');
             tr.className = 'pp-stat-row';
             tr.tabIndex = 0;
             tr.setAttribute('aria-expanded', 'false');
-            tr.innerHTML = `<td>${r.now ? icon('eye') : ''}${escapeHtml(fullName(r.name))}</td><td>${r.phases}</td><td>${r.days}</td><td>${r.grades}</td>${r.stars.map(v => `<td>${fmtStars(v)}</td>`).join('')}`;
+            tr.innerHTML = `<td>${r.now ? icon('eye') : ''}${escapeHtml(fullName(r.name))}</td><td>${r.phases}</td><td>${r.days}</td><td>${r.grades}</td><td>${r.abs.missed}</td><td title="${r.abs.mins} Minuten">${r.abs.late}${r.abs.mins ? ` <small>(${r.abs.mins}′)</small>` : ''}</td>${r.stars.map(v => `<td>${fmtStars(v)}</td>`).join('')}`;
             let open = null;
             const toggle = () => {
                 if (open) { open.remove(); open = null; tr.setAttribute('aria-expanded', 'false'); return; }
                 open = document.createElement('tr');
                 open.className = 'pp-stat-open';
                 const td = document.createElement('td');
-                td.colSpan = 4 + allCats().length;
+                td.colSpan = 6 + allCats().length;
                 td.appendChild(statsDetail(r.name));
                 open.appendChild(td);
                 tr.after(open);
@@ -6591,7 +6787,7 @@ document.addEventListener('DOMContentLoaded', () => {
         content.appendChild(wrap);
         const hint = document.createElement('p');
         hint.className = 'pp-hint';
-        hint.textContent = 'Zeile antippen: Noten mit Datum und Unterrichtsnotiz, Beobachtungszeiträume und Verlauf der Sterne.';
+        hint.textContent = 'Zeile antippen: Noten mit Datum und Unterrichtsnotiz, Fehlzeiten, Beobachtungszeiträume und Verlauf der Sterne.';
         content.appendChild(hint);
         await sheet({ title: `Statistik · ${currentName}`, content, className: 'pp-sheet-wide', buttons: [{ label: 'Schließen', value: null, kind: 'primary' }] });
     }

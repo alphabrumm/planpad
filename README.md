@@ -113,3 +113,12 @@ löscht die lokal gespeicherten Pläne nicht nach längerer Nichtnutzung.
 - Vorne im Raum: Lehrerpult von oben mit Buch, iPad und Stift (SVG, Grautöne, ohne Text) statt der Box „Lehrkraft“.
 - Menü → Darstellung: Farbkreise für das Akzent-Thema (Blau, Mint, Rosé, Lavendel, Apricot), hell und dunkel,
   gespeichert in `localStorage['planpad.accent']`.
+
+## Fehlzeiten (ab 1.39.0)
+- Raumleiste rechts neben dem Papierkorb: „Schnupfnase | Uhr“ (wer fehlt heute? – Tische antippen, Speichern;
+  erneut öffnen = vorausgewählt, abwählen korrigiert) und „Tür“ (gerade gekommen: Verspätung = Zeit seit „fehlt“,
+  auf 5 Min. aufgerundet; ohne vorheriges „fehlt“ nur „zu spät“).
+- Tische: fehlend grau mit Schnupfnase, verspätet mit Uhr (nur am selben Tag; nicht beim Präsentieren/Drucken).
+- Anzeigen: Notizen-Leiste ohne Auswahl „Fehlzeiten“ mit Tagesblättern ‹ ›; Schüleransicht mit Zusammenfassung und
+  löschbaren Einträgen; Statistik-Spalten „Gefehlt“ und „Zu spät“ plus Liste im Detail.
+- Gespeichert in der Klasse (`absences`); in Sicherungsdateien nur mit „Notizen, Sterne, Beobachtungen und Fehlzeiten“ = Ja.
