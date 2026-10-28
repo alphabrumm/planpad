@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.40.1';
+    const VERSION = '1.40.2';
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
@@ -100,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.2V12l3.2 2"/>',
         arrive: '<path d="M14.5 3.5h5.5v17h-5.5"/><circle cx="17.6" cy="12.2" r=".6" fill="currentColor"/><circle cx="7.4" cy="4.9" r="1.7"/><path d="M3.5 12.3l2.6-2.8h3l2.4 3 2.3.7"/><path d="M7.6 9.6l-1.3 5.2 2.8 2v3.8"/><path d="M6.3 14.8l-2.6 5.7"/>',
         bell: '<path d="M6.2 16.4V11a5.8 5.8 0 0 1 11.6 0v5.4l1.6 2.1H4.6z"/><path d="M10 20.6a2.1 2.1 0 0 0 4 0"/><path d="M2.8 8.6a9.6 9.6 0 0 1 2.4-4.5M21.2 8.6a9.6 9.6 0 0 0-2.4-4.5"/>',
+        saveAll: '<path d="M6 3v6M3.8 6.8L6 9l2.2-2.2"/><path d="M12 6v7M9.6 10.6L12 13l2.4-2.4"/><path d="M18 3v6M15.8 6.8L18 9l2.2-2.2"/><path d="M4 20h16"/><path d="M4 16.5v3.5M20 16.5v3.5"/>',
         eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
         thumbUp: '<path d="M7 10v10H4V10z"/><path d="M7 10l4-7a2 2 0 0 1 2.6 1.9L13 9h5.4a2 2 0 0 1 2 2.3l-1.2 7A2 2 0 0 1 17.2 20H7"/>',
         thumbDown: '<path d="M7 14V4H4v10z"/><path d="M7 14l4 7a2 2 0 0 0 2.6-1.9L13 15h5.4a2 2 0 0 0 2-2.3l-1.2-7A2 2 0 0 0 17.2 4H7"/>',
@@ -903,7 +904,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'view-notes': 'Notizen-Ansicht: Tisch antippen und Notiz, Note und Sterne eintragen.',
         'zoom-out': 'Raum verkleinern.',
         'zoom-in': 'Raum vergrößern.',
-        'zoom-fit': 'Ganzen Raum einpassen. Die Zahl zeigt die aktuelle Größe.',
+        'zoom-fit': 'Ganzen Raum einpassen.',
         'present-btn': 'Präsentieren: Sitzplan bildschirmfüllend für die Klasse – ohne Notizen, Augen und Punkte.',
         'present-exit': 'Präsentieren beenden.',
         'drawer-close': 'Menü schließen.',
@@ -2198,7 +2199,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const label = $('zoom-label');
         if (label) label.textContent = `${Math.round(zoom * 100)} %`;
         const fit = $('zoom-fit');
-        if (fit) fit.setAttribute('aria-pressed', String(fitMode));
+        if (fit) {
+            fit.setAttribute('aria-pressed', String(fitMode));
+            fit.title = `Sitzplan einpassen (Größe jetzt ${Math.round(zoom * 100)} %)`;
+        }
     }
 
     function saveView() {

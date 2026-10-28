@@ -936,7 +936,9 @@ button { -webkit-user-select: none; user-select: none; }
     font-weight: 700;
     color: var(--ink-2);
     font-variant-numeric: tabular-nums;
-    min-width: 92px;
+    width: 40px;
+    min-width: 40px;
+    padding: 0;
     justify-content: center;
 }
 
@@ -1800,3 +1802,10 @@ button { -webkit-user-select: none; user-select: none; }
 .pp-rem-date { font: inherit; font-size: 16px; min-height: 42px; }
 .pp-rem-add { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
 .pp-rem-add .pp-icon { width: 18px; height: 18px; }
+
+/* Einpassen-Button: quadratisch, Prozent nur für Screenreader / im Tooltip */
+.pp-sr { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.pp-zoom-fit { height: 40px; }
+.pp-zoom-fit .pp-icon { width: 20px; height: 20px; }
+/* Burger-Menü: Abstände zwischen den Gruppen */
+.pp-menu-actions .pp-menu-gap { margin-bottom: 14px; }

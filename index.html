@@ -23,7 +23,7 @@
                 t === "auto" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : t;
         } catch (e) { }
     </script>
-    <link rel="stylesheet" href="planpad.css?v=1.40.1">
+    <link rel="stylesheet" href="planpad.css?v=1.40.2">
 </head>
 
 <body>
@@ -159,7 +159,7 @@
                     </div>
                     <div class="pp-zoom" role="group" aria-label="Ansicht">
                         <button class="pp-iconbtn" id="zoom-out" title="Verkleinern" aria-label="Verkleinern" data-icon="zoomOut"></button>
-                        <button class="pp-zoom-fit" id="zoom-fit" title="Sitzplan einpassen" aria-label="Sitzplan einpassen"><span data-icon="fit"></span><span id="zoom-label">100 %</span></button>
+                        <button class="pp-zoom-fit" id="zoom-fit" title="Sitzplan einpassen" aria-label="Sitzplan einpassen"><span data-icon="fit"></span><span id="zoom-label" class="pp-sr">100 %</span></button>
                         <button class="pp-iconbtn" id="zoom-in" title="Vergrößern" aria-label="Vergrößern" data-icon="zoomIn"></button>
                         <button class="pp-iconbtn" id="present-btn" title="Präsentieren (Vollbild)" aria-label="Präsentieren" data-icon="present"></button>
                     </div>
@@ -187,11 +187,11 @@
                 <div class="pp-menu-actions">
                     <button id="new-plan-btn"><span data-icon="plus"></span><span>Klasse anlegen</span></button>
                     <button id="new-plan-csv-btn"><span data-icon="listImport"></span><span>Klasse als Liste importieren</span></button>
-                    <button id="duplicate-plan-btn"><span data-icon="copy"></span><span>Klasse duplizieren</span></button>
+                    <button id="duplicate-plan-btn" class="pp-menu-gap"><span data-icon="copy"></span><span>Klasse duplizieren</span></button>
                     <button id="demo-btn"><span data-icon="learn"></span><span>Demoklasse laden</span></button>
-                    <button id="import"><span data-icon="open"></span><span>Klassen aus Datei öffnen</span></button>
+                    <button id="import" class="pp-menu-gap"><span data-icon="open"></span><span>Klassen aus Datei öffnen</span></button>
                     <button id="export-current"><span data-icon="save"></span><span>Klasse als Datei sichern</span></button>
-                    <button id="export"><span data-icon="share"></span><span>Alle Klassen als Datei sichern</span></button>
+                    <button id="export" class="pp-menu-gap"><span data-icon="saveAll"></span><span>Alle Klassen als Datei sichern</span></button>
                 </div>
                 <ul class="pp-planlist" id="plan-list"></ul>
                 <div class="pp-menu-actions">
@@ -231,12 +231,12 @@
                 <p class="pp-about"><b>Schuljahresende:</b> Alle Klassen, Fotos, Notizen und Sicherungsdateien müssen am Ende des Schuljahres gelöscht werden. PlanPad erinnert einmal pro Schuljahr daran.</p>
                 <p class="pp-about">Tipp fürs iPad: Teilen → „Zum Home-Bildschirm“. Dann läuft PlanPad auch offline,
                     und Safari löscht die gespeicherten Daten nicht nach längerer Nichtnutzung.</p>
-                <p class="pp-version">Version 1.40.1 · Schrift: Atkinson Hyperlegible (SIL OFL)</p>
+                <p class="pp-version">Version 1.40.2 · Schrift: Atkinson Hyperlegible (SIL OFL)</p>
             </div>
         </aside>
     </div>
 
-    <script src="planpad.js?v=1.40.1"></script>
+    <script src="planpad.js?v=1.40.2"></script>
 </body>
 
 </html>
