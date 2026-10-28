@@ -122,3 +122,10 @@ löscht die lokal gespeicherten Pläne nicht nach längerer Nichtnutzung.
 - Anzeigen: Notizen-Leiste ohne Auswahl „Fehlzeiten“ mit Tagesblättern ‹ ›; Schüleransicht mit Zusammenfassung und
   löschbaren Einträgen; Statistik-Spalten „Gefehlt“ und „Zu spät“ plus Liste im Detail.
 - Gespeichert in der Klasse (`absences`); in Sicherungsdateien nur mit „Notizen, Sterne, Beobachtungen und Fehlzeiten“ = Ja.
+
+## Erinnerungen (ab 1.40.0)
+- Glocke in der Raumleiste (links neben dem Sortier-Button, Trennstrich): Liste der Erinnerungen dieser Klasse
+  (Text + Fälligkeit, „Erledigt“, erledigte aufklappbar und löschbar) und neue Erinnerung: „Beim nächsten Öffnen“
+  oder „Ab Datum“. Zahl an der Glocke = offene Erinnerungen (gelb = fällig).
+- Fällige Erinnerungen erscheinen bei jedem Öffnen der Klasse (Start, Wechsel), bis sie mit „Erledigt“ quittiert sind.
+- Gespeichert in der Klasse (`reminders`); in Sicherungsdateien nur mit dem Notizen-Schalter = Ja.

@@ -23,7 +23,7 @@
                 t === "auto" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : t;
         } catch (e) { }
     </script>
-    <link rel="stylesheet" href="planpad.css?v=1.39.2">
+    <link rel="stylesheet" href="planpad.css?v=1.40.0">
 </head>
 
 <body>
@@ -149,6 +149,8 @@
                         <button class="pp-iconbtn pp-arrive-btn" id="arrive-btn" title="Kind kommt gerade in den Raum" aria-label="Kinder eintragen, die gerade gekommen sind" data-icon="arrive"></button>
                     </div>
                     <div class="pp-roombar-tools">
+                        <button class="pp-iconbtn pp-reminder-btn" id="reminder-btn" title="Erinnerungen dieser Klasse" aria-label="Erinnerungen" data-icon="bell"></button>
+                        <span class="pp-tooldiv" aria-hidden="true"></span>
                         <button class="pp-iconbtn pp-togglebtn" id="distribute" aria-pressed="false" title="In Reihenfolge sortieren (an/aus)" aria-label="In Reihenfolge sortieren" data-icon="abcorder"></button>
                         <div class="pp-view-switch" role="group" aria-label="Ansicht der linken Leiste">
                             <button id="view-groups" aria-pressed="false" aria-label="Gruppen" title="Gruppen: Namen, Fotos, Regeln, Umsetzen" data-icon="users"></button>
@@ -229,12 +231,12 @@
                 <p class="pp-about"><b>Schuljahresende:</b> Alle Klassen, Fotos, Notizen und Sicherungsdateien müssen am Ende des Schuljahres gelöscht werden. PlanPad erinnert einmal pro Schuljahr daran.</p>
                 <p class="pp-about">Tipp fürs iPad: Teilen → „Zum Home-Bildschirm“. Dann läuft PlanPad auch offline,
                     und Safari löscht die gespeicherten Daten nicht nach längerer Nichtnutzung.</p>
-                <p class="pp-version">Version 1.39.2 · Schrift: Atkinson Hyperlegible (SIL OFL)</p>
+                <p class="pp-version">Version 1.40.0 · Schrift: Atkinson Hyperlegible (SIL OFL)</p>
             </div>
         </aside>
     </div>
 
-    <script src="planpad.js?v=1.39.2"></script>
+    <script src="planpad.js?v=1.40.0"></script>
 </body>
 
 </html>

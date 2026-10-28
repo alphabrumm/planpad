@@ -1770,3 +1770,33 @@ button { -webkit-user-select: none; user-select: none; }
 .pp-absent-btn { color: var(--danger); }
 .pp-absent-btn .pp-icon { width: 20px; height: 20px; }
 .pp-arrive-btn { color: var(--ok); }
+
+/* Erinnerungen */
+.pp-reminder-btn { position: relative; }
+.pp-reminder-btn.has-due { color: #B8860B; }
+.pp-rem-count {
+    position: absolute; top: 3px; right: 2px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px;
+    display: grid; place-items: center; font-size: 11px; font-weight: 700; background: var(--accent); color: var(--accent-ink);
+}
+.pp-reminder-btn.has-due .pp-rem-count { background: var(--marker); color: var(--marker-ink); }
+.pp-roombar-tools .pp-tooldiv { margin: 0 4px; }
+.pp-rem { display: flex; flex-direction: column; gap: 10px; }
+.pp-rem-list { display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.pp-rem-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: var(--radius-m); background: var(--surface-2); }
+.pp-rem-item.is-due { background: var(--marker-soft); }
+.pp-rem-item.is-done { opacity: 0.6; }
+.pp-rem-item.is-done b { text-decoration: line-through; }
+.pp-rem-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pp-rem-text b { font-size: 15px; overflow-wrap: anywhere; }
+.pp-rem-text small { font-size: 12.5px; color: var(--ink-2); }
+.pp-rem-del { width: 34px; height: 34px; color: var(--ink-2); }
+.pp-rem-del .pp-icon { width: 17px; height: 17px; }
+.pp-rem-done summary { cursor: pointer; font-size: 13.5px; color: var(--ink-2); padding: 4px 2px; }
+.pp-rem-done .pp-rem-item { margin-top: 6px; }
+.pp-rem-form { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
+.pp-rem-formtitle { font-size: 14px; }
+.pp-rem-form textarea { font: inherit; font-size: 16px; color: var(--ink); background: var(--surface); border: 1.5px solid var(--line); border-radius: var(--radius-s); padding: 8px 10px; resize: vertical; }
+.pp-rem-form textarea:focus { border-color: var(--accent); outline: none; }
+.pp-rem-date { font: inherit; font-size: 16px; min-height: 42px; }
+.pp-rem-add { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.pp-rem-add .pp-icon { width: 18px; height: 18px; }

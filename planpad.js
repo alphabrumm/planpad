@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.39.2';
+    const VERSION = '1.40.0';
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
@@ -99,6 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sick: '<path d="M9.4 3.8h5.2v5.6h5.6v5.2h-5.6v5.6H9.4v-5.6H3.8V9.4h5.6z" fill="currentColor" stroke-linejoin="round" stroke-width="1.2"/>',
         clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.2V12l3.2 2"/>',
         arrive: '<path d="M14.5 3.5h5.5v17h-5.5"/><circle cx="17.6" cy="12.2" r=".6" fill="currentColor"/><circle cx="7.4" cy="4.9" r="1.7"/><path d="M3.5 12.3l2.6-2.8h3l2.4 3 2.3.7"/><path d="M7.6 9.6l-1.3 5.2 2.8 2v3.8"/><path d="M6.3 14.8l-2.6 5.7"/>',
+        bell: '<path d="M6.2 16.4V11a5.8 5.8 0 0 1 11.6 0v5.4l1.6 2.1H4.6z"/><path d="M10 20.6a2.1 2.1 0 0 0 4 0"/><path d="M2.8 8.6a9.6 9.6 0 0 1 2.4-4.5M21.2 8.6a9.6 9.6 0 0 0-2.4-4.5"/>',
         eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
         thumbUp: '<path d="M7 10v10H4V10z"/><path d="M7 10l4-7a2 2 0 0 1 2.6 1.9L13 9h5.4a2 2 0 0 1 2 2.3l-1.2 7A2 2 0 0 1 17.2 20H7"/>',
         thumbDown: '<path d="M7 14V4H4v10z"/><path d="M7 14l4 7a2 2 0 0 0 2.6-1.9L13 15h5.4a2 2 0 0 0 2-2.3l-1.2-7A2 2 0 0 0 17.2 4H7"/>',
@@ -282,6 +283,8 @@ document.addEventListener('DOMContentLoaded', () => {
     let namesSession = null;        // laufende Bearbeitung der Namensliste: { lines, origins }
     let observ = { off: false, count: 4, periods: [] };   // Unterrichtsbeobachtungen der Klasse
     let votes = {};                 // Sterne je Kind und Kategorie
+    let reminders = [];             // Erinnerungen der Klasse: { id, text, mode: 'next'|'date', date, created, done }
+    let classOpenedAt = new Date().toISOString();   // „beim nächsten Öffnen“ = vor diesem Zeitpunkt angelegt
     let absences = [];              // Fehlzeiten: { id, name, date, from (fehlt seit), to (gekommen), late (Min.) }
     let lastNames = {};             // Name → Nachname (aus der CSV-Liste), für „In Reihenfolge“
 
@@ -758,6 +761,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 'Ganz oben ohne Auswahl: „Beobachten“ (wer gerade beobachtet wird, wie lange noch; „Beobachtungen planen“) und „Statistik“ (Beobachtungen, Noten, Sterne je Kind – Zeile antippen für Details und Verlauf). Darunter die Klassennotizen (gestrichelter Kasten) – „Anlegen“ für Notizen zur ganzen Klasse.',
                 'Unterrichtsbeobachtung: Ist seit dem letzten Öffnen der Klasse eine Beobachtung abgelaufen oder beendet worden, schlägt PlanPad beim Öffnen genauso viele neue Kinder vor (zuerst die noch nie Beobachteten). Ein Zeitraum dauert 10 Schultage, Ferien zählen nicht. Das Auge oben links auf dem Tisch zeigt, wer beobachtet wird – der dunkle Ring, wie viel Zeit noch bleibt (beim Präsentieren unsichtbar).',
                 'Fehlzeiten: rotes Kreuz in der Raumleiste → Tische der fehlenden Kinder antippen (grau). Kommt jemand später: grüne Tür → Tisch antippen, PlanPad rechnet die Verspätung aus (auf 5 Min. aufgerundet). Ohne Auswahl zeigt die Leiste „Fehlzeiten“ Tag für Tag (‹ ›), beim Kind und in der Statistik stehen alle Einträge.',
+                'Erinnerungen: Glocke in der Raumleiste – Text eingeben, „Beim nächsten Öffnen“ oder „Ab Datum“. Fällige Erinnerungen erscheinen bei jedem Öffnen der Klasse, bis sie mit „Erledigt“ abgehakt sind.',
                 'Unter der Notiz: Sterne je Kategorie (neue Klassen: Verhalten und Selbstorganisation) – Daumen hoch/runter = ±½ Stern. Stift: umbenennen oder entfernen. „weitere hinzufügen“: eigene Kategorie (bis zu 10) für diese Klasse oder alle.',
                 'Notizen gelten in allen Sitzplänen. Beim Präsentieren werden sie nie angezeigt.'
             ]
@@ -889,6 +893,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'fix-conflicts': 'Verletzte Regeln automatisch lösen – mit möglichst wenig Umsetzen.',
         'layout-btn': 'Layouts: Tische in Reihen, Paaren, Gruppen, U-Form oder Prüfungsform aufstellen; eigene Vorlagen speichern.',
         'add-square': 'Neuen Tisch in den Raum stellen.',
+        'reminder-btn': 'Erinnerungen dieser Klasse: anzeigen, neue anlegen (beim nächsten Öffnen oder ab einem Datum) und mit „Erledigt“ abhaken. Die Zahl zeigt offene Erinnerungen.',
         'absent-btn': 'Wer fehlt heute? Tische der fehlenden Kinder antippen. Sie werden grau mit Kreuz. Fehlzeiten stehen beim Kind und in der Statistik.',
         'arrive-btn': 'Kind kommt in den Raum: Tisch antippen. Stand es auf „fehlt“, rechnet PlanPad die Verspätung aus (auf 5 Minuten aufgerundet), sonst nur „zu spät“.',
         'clear-seats': 'Pinsel: Kinder von den Tischen lösen – alle oder einzelne. Ist ein Tisch gewählt, nur diesen.',
@@ -3205,6 +3210,9 @@ document.addEventListener('DOMContentLoaded', () => {
         observ = normObs(plan && plan.observ);
         absences = normAbsences(plan && plan.absences);
         absDayView = null;
+        reminders = normReminders(plan && plan.reminders);
+        classOpenedAt = new Date().toISOString();
+        renderReminderBadge();
         votes = normVotes(plan && plan.votes);
         classCats = catsOfPlan(plan);
         applyData({ ...(plan || {}), layout: shownOf(st).layout, squares: shownOf(st).squares });
@@ -3577,6 +3585,7 @@ document.addEventListener('DOMContentLoaded', () => {
             observ: JSON.parse(JSON.stringify(observ)),
             votes: JSON.parse(JSON.stringify(votes)),
             absences: absences.map(a => ({ ...a })),
+            reminders: reminders.map(r => ({ ...r })),
             ratingCats: classCats.map(c => ({ ...c })),
             catsV2: true,
             timestamp: new Date().toISOString(),
@@ -3660,7 +3669,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (students.length && !notesMode) setNotesMode(true);
         renderNotes();
         app.classList.toggle('is-editing-names', !students.length);
-        observationCheck().catch(console.error);
+        observationCheck().catch(console.error).then(reminderCheck).catch(console.error);
         resetHistory();
         try { localStorage.setItem(KEY_CURRENT, name); } catch { /* egal */ }
         renderPlanHeader();
@@ -4206,6 +4215,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const v = pl.votes && typeof pl.votes === 'object' ? Object.values(pl.votes) : [];
             return t + ((pl.observ && Array.isArray(pl.observ.periods)) ? pl.observ.periods.length : 0)
                 + (Array.isArray(pl.absences) ? pl.absences.length : 0)
+                + (Array.isArray(pl.reminders) ? pl.reminders.length : 0)
                 + v.reduce((a, r) => a + Object.values(r || {}).reduce((b, x) => b + (Array.isArray(x) ? x.length : 0), 0), 0);
         }, 0);
         if (noteTotal || extraTotal) {
@@ -4213,7 +4223,7 @@ document.addEventListener('DOMContentLoaded', () => {
             row.className = 'pp-setting-row';
             row.style.margin = '6px 0 10px';
             row.innerHTML = extraTotal
-                ? `<span>Notizen, Sterne, Beobachtungen und Fehlzeiten einschließen (${noteTotal + extraTotal})</span>`
+                ? `<span>Notizen, Sterne, Beobachtungen, Fehlzeiten und Erinnerungen einschließen (${noteTotal + extraTotal})</span>`
                 : `<span>Notizen einschließen (${noteTotal})</span>`;
             const seg = document.createElement('div');
             seg.className = 'pp-segmented pp-segmented-small';
@@ -4265,7 +4275,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const out = {};
         keys.forEach(k => {
             out[k] = plans[k];
-            if (!withNotes) { const { observ: _o, votes: _v, absences: _a, ...rest } = plans[k]; out[k] = rest; }
+            if (!withNotes) { const { observ: _o, votes: _v, absences: _a, reminders: _r, ...rest } = plans[k]; out[k] = rest; }
         });
         const payload = { plans: out };
         const tpls = readTemplates();
@@ -6685,6 +6695,180 @@ document.addEventListener('DOMContentLoaded', () => {
         return sec;
     }
 
+    /* ----- Erinnerungen je Klasse ----- */
+    function normReminders(v) {
+        const okDay = d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
+        return (Array.isArray(v) ? v : []).filter(r => r && String(r.text || '').trim()).map(r => ({
+            id: String(r.id || newId()), text: String(r.text).trim().slice(0, 500),
+            mode: r.mode === 'date' && okDay(r.date) ? 'date' : 'next', date: okDay(r.date) ? r.date : null,
+            created: r.created || new Date(0).toISOString(), done: r.done || null
+        }));
+    }
+    const openReminders = () => reminders.filter(r => !r.done);
+    function reminderDue(r) {
+        if (r.done) return false;
+        return r.mode === 'date' ? r.date <= todayIso() : String(r.created) < classOpenedAt;
+    }
+    function reminderWhen(r) {
+        if (r.done) return `erledigt ${fmtDay(isoDay(new Date(r.done)))}`;
+        if (r.mode === 'date') return r.date <= todayIso() ? `fällig seit ${fmtDay(r.date)}` : `ab ${fmtDayLong(r.date)}`;
+        return reminderDue(r) ? 'fällig' : 'beim nächsten Öffnen';
+    }
+    function renderReminderBadge() {
+        const b = $('reminder-btn');
+        if (!b) return;
+        const n = openReminders().length;
+        let badge = b.querySelector('.pp-rem-count');
+        if (!n) { if (badge) badge.remove(); b.classList.remove('has-due'); return; }
+        if (!badge) { badge = document.createElement('span'); badge.className = 'pp-rem-count'; b.appendChild(badge); }
+        badge.textContent = n;
+        b.classList.toggle('has-due', reminders.some(reminderDue));
+    }
+    function setReminderDone(r) {
+        r.done = new Date().toISOString();
+        saveCurrentPlan(true);
+        renderReminderBadge();
+    }
+    /** Liste + neue Erinnerung */
+    async function openRemindersDialog() {
+        const content = document.createElement('div');
+        content.className = 'pp-rem';
+        const list = document.createElement('div');
+        list.className = 'pp-rem-list';
+        content.appendChild(list);
+        const drawList = () => {
+            list.textContent = '';
+            const open = openReminders().sort((a, b) => (reminderDue(b) - reminderDue(a)) || String(a.date || '').localeCompare(String(b.date || '')));
+            const done = reminders.filter(r => r.done).sort((a, b) => String(b.done).localeCompare(String(a.done)));
+            if (!open.length) {
+                const p = document.createElement('p');
+                p.className = 'pp-hint';
+                p.textContent = 'Keine offenen Erinnerungen.';
+                list.appendChild(p);
+            }
+            open.forEach(r => {
+                const row = document.createElement('div');
+                row.className = 'pp-rem-item' + (reminderDue(r) ? ' is-due' : '');
+                row.innerHTML = `<div class="pp-rem-text"><b>${escapeHtml(r.text)}</b><small>${escapeHtml(reminderWhen(r))}</small></div>`;
+                const ok = document.createElement('button');
+                ok.type = 'button';
+                ok.className = 'pp-btn pp-btn-small';
+                ok.textContent = 'Erledigt';
+                ok.addEventListener('click', () => { setReminderDone(r); drawList(); });
+                row.appendChild(ok);
+                list.appendChild(row);
+            });
+            if (done.length) {
+                const det = document.createElement('details');
+                det.className = 'pp-rem-done';
+                det.innerHTML = `<summary>Erledigt (${done.length})</summary>`;
+                done.forEach(r => {
+                    const row = document.createElement('div');
+                    row.className = 'pp-rem-item is-done';
+                    row.innerHTML = `<div class="pp-rem-text"><b>${escapeHtml(r.text)}</b><small>${escapeHtml(reminderWhen(r))}</small></div>`;
+                    const del = document.createElement('button');
+                    del.type = 'button';
+                    del.className = 'pp-iconbtn pp-rem-del';
+                    del.setAttribute('aria-label', 'Erinnerung löschen');
+                    del.title = 'Löschen';
+                    del.innerHTML = icon('trash');
+                    del.addEventListener('click', () => { reminders = reminders.filter(x => x.id !== r.id); saveCurrentPlan(true); drawList(); });
+                    row.appendChild(del);
+                    det.appendChild(row);
+                });
+                det.open = !open.length;
+                list.appendChild(det);
+            }
+        };
+        drawList();
+        const form = document.createElement('div');
+        form.className = 'pp-rem-form';
+        form.innerHTML = '<b class="pp-rem-formtitle">Neue Erinnerung</b>';
+        const ta = document.createElement('textarea');
+        ta.rows = 2;
+        ta.placeholder = 'z. B. Elternbrief einsammeln, Test zurückgeben …';
+        ta.setAttribute('aria-label', 'Text der Erinnerung');
+        form.appendChild(ta);
+        const seg = document.createElement('div');
+        seg.className = 'pp-segmented pp-segmented-small pp-rem-mode';
+        let mode = 'next';
+        const date = document.createElement('input');
+        date.type = 'date';
+        date.className = 'pp-rem-date';
+        date.value = addDays(todayIso(), 1);
+        date.hidden = true;
+        const mk = (val, label) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = label;
+            b.dataset.mode = val;
+            b.setAttribute('aria-pressed', String(val === mode));
+            b.addEventListener('click', () => {
+                mode = val;
+                seg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+                date.hidden = mode !== 'date';
+            });
+            seg.appendChild(b);
+        };
+        mk('next', 'Beim nächsten Öffnen');
+        mk('date', 'Ab Datum');
+        form.appendChild(seg);
+        form.appendChild(date);
+        const add = document.createElement('button');
+        add.type = 'button';
+        add.className = 'pp-btn pp-btn-primary pp-rem-add';
+        add.innerHTML = `${icon('plus')}<span>Erinnerung speichern</span>`;
+        add.addEventListener('click', () => {
+            const text = ta.value.trim();
+            if (!text) { showToast('Bitte einen Text eingeben.', 'warn', 2000); ta.focus(); return; }
+            if (mode === 'date' && !date.value) { showToast('Bitte ein Datum wählen.', 'warn', 2000); return; }
+            reminders.push({ id: newId(), text: text.slice(0, 500), mode, date: mode === 'date' ? date.value : null, created: new Date().toISOString(), done: null });
+            saveCurrentPlan(true);
+            renderReminderBadge();
+            ta.value = '';
+            drawList();
+            showToast(mode === 'date' ? `Erinnerung ab ${fmtDay(date.value)} gespeichert.` : 'Erinnerung erscheint beim nächsten Öffnen der Klasse.', 'ok', 2500);
+        });
+        form.appendChild(add);
+        content.appendChild(form);
+        await sheet({ title: `Erinnerungen · ${currentName}`, content, className: 'pp-sheet-rem', buttons: [{ label: 'Schließen', value: null }] });
+        renderReminderBadge();
+    }
+    on('reminder-btn', 'click', () => openRemindersDialog());
+    /** beim Öffnen der Klasse: fällige Erinnerungen, bis sie mit „Erledigt“ quittiert sind */
+    async function reminderCheck() {
+        renderReminderBadge();
+        const due = reminders.filter(reminderDue);
+        if (!due.length || document.querySelector('.pp-sheet-layer')) return;
+        const content = document.createElement('div');
+        content.className = 'pp-rem';
+        due.forEach(r => {
+            const row = document.createElement('div');
+            row.className = 'pp-rem-item is-due';
+            row.innerHTML = `<div class="pp-rem-text"><b>${escapeHtml(r.text)}</b><small>${escapeHtml(r.mode === 'date' ? `seit ${fmtDayLong(r.date)}` : 'beim letzten Mal angelegt')}</small></div>`;
+            const ok = document.createElement('button');
+            ok.type = 'button';
+            ok.className = 'pp-btn pp-btn-small pp-btn-primary';
+            ok.textContent = 'Erledigt';
+            ok.addEventListener('click', () => {
+                setReminderDone(r);
+                row.classList.add('is-done');
+                ok.disabled = true;
+                ok.textContent = '✓ erledigt';
+            });
+            row.appendChild(ok);
+            content.appendChild(row);
+        });
+        await sheet({
+            title: due.length === 1 ? 'Erinnerung' : `${due.length} Erinnerungen`,
+            text: 'Mit „Erledigt“ abhaken – sonst erscheint die Erinnerung beim nächsten Öffnen wieder.',
+            content,
+            className: 'pp-sheet-rem',
+            buttons: [{ label: 'Schließen', value: null }]
+        });
+        renderReminderBadge();
+    }
+
     /* ----- Statistik ----- */
     function gradeNotes(name) {
         return (notesOfPlan(currentPlanId)[name] || []).filter(n => n && String(n.grade || '').trim())
@@ -7048,7 +7232,8 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(privacyReminder).catch(console.error)
 
         .then(backupReminder).catch(console.error)
-        .then(observationCheck).catch(console.error);
+        .then(observationCheck).catch(console.error)
+        .then(reminderCheck).catch(console.error);
     // angefangene Notiz sichern, wenn die App in den Hintergrund geht
     // Beim Schließen / Wechsel in den Hintergrund sofort sichern (Notiz-Entwurf und anstehende Planänderung)
     const flushAll = () => {
