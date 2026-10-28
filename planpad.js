@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.37.7';
+    const VERSION = '1.38.0';
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
@@ -750,8 +750,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 'Neue Notizen sind gelb markiert („neu“), der Tisch bekommt einen gelben Punkt. Ohne Auswahl zeigt die Leiste alle neuen Notizen der Klasse – mit ✓ einzeln abhaken oder „Alle als gelesen markieren“. Hat ein Kind keine neue Notiz mehr, verschwindet der Punkt.',
                 'Stift neben dem Namen: Namen ändern – Notizen bleiben erhalten. Foto antippen: Foto ändern.',
                 'Irgendwo ins Leere tippen: Auswahl aufheben.',
-                'Ganz oben ohne Auswahl: „Beobachtungen“ (wer gerade beobachtet wird, wie lange noch; „Beobachtungen planen“) und „Statistik“ (Beobachtungen, Noten, Sterne je Kind – Zeile antippen für Details und Verlauf). Darunter die Klassennotizen (gestrichelter Kasten) – „Anlegen“ für Notizen zur ganzen Klasse.',
-                'Unterrichtsbeobachtung: Beim Öffnen einer Klasse schlägt PlanPad 4 Kinder für 10 Schultage vor (Ferien zählen nicht) – zuerst die noch nie Beobachteten. Ein Auge oben links auf dem Tisch zeigt, wer gerade beobachtet wird (beim Präsentieren unsichtbar).',
+                'Ganz oben ohne Auswahl: „Beobachten“ (wer gerade beobachtet wird, wie lange noch; „Beobachtungen planen“) und „Statistik“ (Beobachtungen, Noten, Sterne je Kind – Zeile antippen für Details und Verlauf). Darunter die Klassennotizen (gestrichelter Kasten) – „Anlegen“ für Notizen zur ganzen Klasse.',
+                'Unterrichtsbeobachtung: Ist seit dem letzten Öffnen der Klasse eine Beobachtung abgelaufen oder beendet worden, schlägt PlanPad beim Öffnen genauso viele neue Kinder vor (zuerst die noch nie Beobachteten). Ein Zeitraum dauert 10 Schultage, Ferien zählen nicht. Das Auge oben links auf dem Tisch zeigt, wer beobachtet wird – der dunkle Ring, wie viel Zeit noch bleibt (beim Präsentieren unsichtbar).',
                 'Unter der Notiz: Sterne je Kategorie (neue Klassen: Verhalten und Selbstorganisation) – Daumen hoch/runter = ±½ Stern. Stift: umbenennen oder entfernen. „weitere hinzufügen“: eigene Kategorie (bis zu 10) für diese Klasse oder alle.',
                 'Notizen gelten in allen Sitzplänen. Beim Präsentieren werden sie nie angezeigt.'
             ]
@@ -904,7 +904,8 @@ document.addEventListener('DOMContentLoaded', () => {
         'delete-all-btn': 'Alle Daten von diesem Gerät löschen, z. B. am Schuljahresende.',
         'clear-faces': 'Alle Fotos dieser Klasse löschen.',
         'print-btn': 'Sitzplan drucken oder als PDF sichern.',
-        'obs-btn': 'Wer wird gerade beobachtet und wie lange noch? Dort auch neue Beobachtungen planen.',
+        'obs-btn': 'Beobachten: Wer wird gerade beobachtet und wie lange noch? Dort auch neue Beobachtungen planen.',
+        'note-eye': 'Dieses Kind wird gerade beobachtet. Antippen: bis wann.',
         'stats-btn': 'Statistik: Beobachtungen, Noten und Sterne je Kind – Zeile antippen für Details und Verlauf.',
         'add-cat': 'Eigene Sterne-Kategorie anlegen – für diese Klasse oder alle.',
         'class-note-add': 'Notiz zur ganzen Klasse anlegen, z. B. Stoff, Hausaufgabe, Termin.',
@@ -1433,8 +1434,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (watched) {
             const eye = document.createElement('span');
             eye.className = 'seat-eye';
+            const left = obsProgress(name);
+            eye.style.setProperty('--p', `${Math.round(left * 360)}deg`);
             eye.title = 'wird gerade beobachtet';
-            eye.innerHTML = icon('eye');
+            eye.innerHTML = `<span class="seat-eye-in">${icon('eye')}</span>`;
             sq.appendChild(eye);
         }
         sq.classList.toggle('has-student', Boolean(name));
@@ -5715,6 +5718,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const nm = document.createElement('b');
         nm.textContent = fullName(noteStudent);
         who.appendChild(nm);
+        if (isObserved(noteStudent)) {
+            const eb = document.createElement('button');
+            eb.type = 'button';
+            eb.className = 'pp-note-eye';
+            eb.id = 'note-eye';
+            eb.setAttribute('aria-label', 'Wird beobachtet – bis wann?');
+            eb.style.setProperty('--p', `${Math.round(obsProgress(noteStudent) * 360)}deg`);
+            eb.innerHTML = `<span class="seat-eye-in">${icon('eye')}</span>`;
+            const who2 = noteStudent;
+            eb.addEventListener('click', () => showTip(eb, { title: `${fullName(who2)} wird beobachtet`, text: obsInfoText(who2) }));
+            who.appendChild(eb);
+        }
         const ren = document.createElement('button');
         ren.type = 'button';
         ren.className = 'pp-iconbtn pp-note-rename';
@@ -5863,9 +5878,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return {
             off: Boolean(o.off),
             count: Number.isInteger(cnt) && cnt >= 0 ? cnt : OBS_COUNT,   // so viele Vorschläge (je Klasse gemerkt)
+            lastActive: Number.isInteger(o.lastActive) && o.lastActive >= 0 ? o.lastActive : null,   // laufende Beobachtungen beim letzten Öffnen
+            lastOpen: ok(o.lastOpen) ? o.lastOpen : null,
             periods: (Array.isArray(o.periods) ? o.periods : [])
                 .filter(p => p && typeof p.name === 'string' && ok(p.start) && ok(p.end))
-                .map(p => ({ id: String(p.id || newId()), name: p.name, start: p.start, end: p.end, done: Boolean(p.done) }))
+                .map(p => {
+                    const q = { id: String(p.id || newId()), name: p.name, start: p.start, end: p.end, done: Boolean(p.done) };
+                    if (ok(p.endedAt)) q.endedAt = p.endedAt;
+                    if (p.expired) q.expired = true;
+                    return q;
+                })
         };
     }
     function normVotes(v) {
@@ -5884,6 +5906,23 @@ document.addEventListener('DOMContentLoaded', () => {
         return Boolean(name) && observ.periods.some(p => !p.done && p.name === name && p.start <= t);
     }
     const obsCount = name => observ.periods.filter(p => p.name === name).length;
+    function currentPeriod(name) {
+        const t = todayIso();
+        return observ.periods.filter(p => !p.done && p.name === name && p.start <= t).sort((a, b) => b.end.localeCompare(a.end))[0] || null;
+    }
+    /** Anteil des Zeitraums, der noch vor dem Kind liegt (1 = gerade begonnen, 0 = endet heute) */
+    function obsProgress(name) {
+        const p = currentPeriod(name);
+        if (!p) return 0;
+        const total = Math.max(1, schoolDaysBetween(p.start, p.end));
+        return Math.max(0, Math.min(1, schoolDaysBetween(todayIso(), p.end) / total));
+    }
+    function obsInfoText(name) {
+        const p = currentPeriod(name);
+        if (!p) return '';
+        const left = schoolDaysBetween(todayIso(), p.end);
+        return `Beobachtung bis ${fmtDayLong(p.end)} – ${left === 0 ? 'endet heute' : `noch ${left} Schultag${left === 1 ? '' : 'e'}`}.`;
+    }
     /** beobachtete Schultage: start ≤ d < Ende, höchstens bis heute */
     function observedDays(p) {
         const t = todayIso();
@@ -5926,9 +5965,22 @@ document.addEventListener('DOMContentLoaded', () => {
         obsChecking = true;
         try {
             const t = todayIso();
-            const due = activePeriods().filter(p => p.end <= t);
-            if (due.length) await openObsEnd(due);
-            else if (!observ.off && !activePeriods().length) await openObsStart({ auto: true });
+            // abgelaufene Zeiträume sind beendet
+            const expired = activePeriods().filter(p => p.end <= t);
+            expired.forEach(p => { p.done = true; p.expired = true; p.endedAt = t; });
+            const nowActive = activePeriods().length;
+            // so viele Plätze sind seit dem letzten Öffnen frei geworden (abgelaufen oder von Hand beendet)
+            const before = observ.lastActive !== null ? observ.lastActive : nowActive + expired.length;
+            let need = Math.max(0, before - nowActive);
+            if (!nowActive && !need) need = Math.min(observ.count, students.length);    // gerade niemand beobachtet
+            const since = observ.lastOpen;
+            const ended = observ.periods.filter(p => p.done && p.endedAt && (!since || p.endedAt >= since) && students.includes(p.name));
+            let answer = null;
+            if (!observ.off && need > 0) answer = await openObsStart({ auto: true, count: Math.min(need, students.length), ended });
+            if (answer !== 'later') { observ.lastActive = activePeriods().length; observ.lastOpen = t; }
+            saveCurrentPlan(true);
+            refreshSeatLabels();
+            renderNotes();
         } finally { obsChecking = false; }
     }
 
@@ -5939,13 +5991,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /** Dialog: Kinder für einen neuen Beobachtungszeitraum würfeln oder auswählen */
-    async function openObsStart({ auto = false, count = null } = {}) {
-        if (!students.length) { needStudents(); return; }
+    async function openObsStart({ auto = false, count = null, ended = [] } = {}) {
+        if (!students.length) { needStudents(); return null; }
         if (count === null) count = Math.min(observ.count, students.length);
         const chosen = [];
         for (let i = 0; i < count; i++) chosen.push(pickObsCandidate(chosen.filter(Boolean)) || '');
         const content = document.createElement('div');
         content.className = 'pp-obs';
+        // Kopf: wie viele werden gerade beobachtet, wer ist seit dem letzten Öffnen fertig
+        const head = document.createElement('div');
+        head.className = 'pp-obs-head';
+        const nAct = activePeriods().length;
+        head.innerHTML = `<span class="pp-obs-now">${icon('eye')}<b id="obs-now-count">${nAct}</b> ${nAct === 1 ? 'Kind wird' : 'Kinder werden'} gerade beobachtet</span>`;
+        if (ended.length) {
+            const p = document.createElement('p');
+            p.className = 'pp-hint pp-obs-ended';
+            const exp = ended.filter(e => e.expired).map(e => e.name);
+            const man = ended.filter(e => !e.expired).map(e => e.name);
+            p.innerHTML = `<b>${ended.length} seit dem letzten Öffnen beendet</b> – `
+                + [exp.length ? `abgelaufen: ${escapeHtml(exp.join(', '))}` : '', man.length ? `von Hand: ${escapeHtml(man.join(', '))}` : ''].filter(Boolean).join(' · ');
+            head.appendChild(p);
+        }
+        content.appendChild(head);
         const list = document.createElement('div');
         list.className = 'pp-obs-list';
         content.appendChild(list);
@@ -6072,8 +6139,8 @@ document.addEventListener('DOMContentLoaded', () => {
             ? [{ label: 'Für diese Klasse aus', value: 'off' }, { label: 'Nicht jetzt', value: 'later' }, { label: 'Beobachten', value: 'go', kind: 'primary' }]
             : [{ label: 'Abbrechen', value: null }, { label: 'Beobachten', value: 'go', kind: 'primary' }];
         const v = await sheet({
-            title: 'Unterrichtsbeobachtung',
-            text: auto ? 'In dieser Klasse wird gerade niemand beobachtet. Vorschlag:' : 'Diese Kinder ab jetzt beobachten:',
+            title: 'Plane Deinen Beobachtungszeitraum',
+            text: auto ? (count === 1 ? 'Vorschlag für ein neues Kind:' : `Vorschläge für ${count} neue Kinder:`) : 'Diese Kinder ab jetzt beobachten:',
             content,
             className: 'pp-sheet-obs',
             buttons
@@ -6081,15 +6148,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (v === 'off') {
             observ.off = true;
             saveObs();
-            showToast('Keine Vorschläge mehr für diese Klasse. Wieder einschalten: Notizen → „Beobachtungen“.', 'info', 5000);
-            return;
+            showToast('Keine Vorschläge mehr für diese Klasse. Wieder einschalten: Notizen → „Beobachten“.', 'info', 5000);
+            return 'off';
         }
-        if (v === 'later' || v === null) { if (auto) snoozeObs(); return; }
+        if (v === 'later' || v === null) { if (auto) snoozeObs(); return 'later'; }
         const names = [...new Set(chosen.filter(Boolean))];
-        if (!names.length || !(to.value > from.value)) { if (auto) snoozeObs(); return; }
+        if (!names.length || !(to.value > from.value)) return 'none';
         names.forEach(name => observ.periods.push({ id: newId(), name, start: from.value, end: to.value, done: false }));
         saveObs();
         showToast(`${names.length === 1 ? fullName(names[0]) + ' wird' : names.length + ' Kinder werden'} bis ${fmtDay(to.value)} beobachtet.`, 'ok', 3500);
+        return 'go';
     }
 
     /** Dialog: Beobachtungszeitraum endet heute (oder ist abgelaufen) */
@@ -6159,6 +6227,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 stop.textContent = 'Beenden';
                 stop.addEventListener('click', () => {
                     p.done = true;
+                    p.endedAt = t;
                     if (p.end > t) p.end = p.start > t ? p.start : t;
                     saveObs();
                     draw();
@@ -6536,7 +6605,7 @@ document.addEventListener('DOMContentLoaded', () => {
         b1.type = 'button';
         b1.id = 'obs-btn';
         b1.className = 'pp-chipbtn pp-obs-open';
-        b1.innerHTML = `${icon('eye')}<span>Beobachtungen</span>${n ? `<span class="pp-count">${n}</span>` : ''}`;
+        b1.innerHTML = `${icon('eye')}<span>Beobachten</span>${n ? `<span class="pp-count">${n}</span>` : ''}`;
         b1.addEventListener('click', openObsOverview);
         const b2 = document.createElement('button');
         b2.type = 'button';

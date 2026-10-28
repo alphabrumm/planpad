@@ -1531,11 +1531,25 @@ button { -webkit-user-select: none; user-select: none; }
 
 /* ===== Unterrichtsbeobachtung, Lob/Tadel, SOL, Statistik ===== */
 .seat-eye {
-    position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
-    display: grid; place-items: center; border-radius: 999px;
-    background: var(--marker); color: var(--marker-ink); box-shadow: var(--shadow-s); pointer-events: none;
+    position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; padding: 3px;
+    border-radius: 999px; pointer-events: none; box-shadow: var(--shadow-s);
+    /* dunkler Ring = verbleibender Beobachtungszeitraum (voll = gerade begonnen) */
+    background: conic-gradient(#2B2F3A var(--p, 360deg), rgba(43, 47, 58, 0.18) 0);
 }
-.seat-eye .pp-icon { width: 13px; height: 13px; stroke-width: 2.4; }
+.seat-eye-in { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 999px; background: var(--marker); color: var(--marker-ink); }
+.seat-eye .pp-icon, .pp-note-eye .pp-icon { width: 11px; height: 11px; stroke-width: 2.6; }
+.pp-note-eye {
+    width: 30px; height: 30px; padding: 3px; flex: none; border-radius: 999px; margin-left: 2px;
+    background: conic-gradient(#2B2F3A var(--p, 360deg), rgba(43, 47, 58, 0.18) 0);
+}
+.pp-note-eye .pp-icon { width: 15px; height: 15px; }
+:root[data-effective="dark"] .seat-eye, :root[data-effective="dark"] .pp-note-eye { background: conic-gradient(#E8EBF2 var(--p, 360deg), rgba(232, 235, 242, 0.2) 0); }
+.pp-obs-head { display: flex; flex-direction: column; gap: 4px; }
+.pp-obs-now { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 4px 10px 4px 8px; border-radius: 999px; background: var(--marker-soft); font-size: 14px; }
+.pp-obs-now .pp-icon { width: 17px; height: 17px; }
+.pp-obs-now b { font-size: 16px; }
+.pp-obs-ended { margin: 0; font-size: 13px; line-height: 1.35; }
+.pp-obs-ended b { color: var(--ink); font-weight: 700; }
 .presenting .seat-eye { display: none; }
 
 .pp-obs-bar { display: flex; gap: 8px; margin: 0 0 12px; }
