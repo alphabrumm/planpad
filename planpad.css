@@ -1809,3 +1809,10 @@ button { -webkit-user-select: none; user-select: none; }
 .pp-zoom-fit .pp-icon { width: 20px; height: 20px; }
 /* Burger-Menü: Abstände zwischen den Gruppen */
 .pp-menu-actions .pp-menu-gap { margin-bottom: 14px; }
+/* iPhone: Raumleiste mit allen Werkzeugen in zwei Zeilen */
+@media (max-width: 600px) {
+    .pp-roombar { gap: 4px 6px; }
+    .pp-roombar .pp-iconbtn, .pp-roombar .pp-zoom-fit { width: 36px; min-width: 36px; }
+    .pp-roombar .pp-tooldiv { margin: 0 2px; }
+    .pp-table-tools, .pp-roombar-tools { gap: 0; }
+}

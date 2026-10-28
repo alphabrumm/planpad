@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.40.2';
+    const VERSION = '1.40.3';
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
