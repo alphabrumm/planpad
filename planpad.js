@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.38.2';
+    const VERSION = '1.38.3';
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
@@ -5961,7 +5961,6 @@ document.addEventListener('DOMContentLoaded', () => {
     async function observationCheck() {
         if (obsChecking || !students.length || document.querySelector('.pp-sheet-layer')) return;
         try { if (localStorage.getItem('planpad.noObsPrompt')) return; } catch { /* egal */ }
-        if (obsSnoozed()) return;
         obsChecking = true;
         try {
             const t = todayIso();
@@ -6151,7 +6150,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Keine Vorschläge mehr für diese Klasse. Wieder einschalten: Notizen → „Beobachten“.', 'info', 5000);
             return 'off';
         }
-        if (v === 'later' || v === null) { if (auto) snoozeObs(); return 'later'; }
+        if (v === 'later' || v === null) return 'later';     // beim nächsten Öffnen der Klasse wieder fragen
         const names = [...new Set(chosen.filter(Boolean))];
         if (!names.length || !(to.value > from.value)) return 'none';
         names.forEach(name => observ.periods.push({ id: newId(), name, start: from.value, end: to.value, done: false }));
