@@ -1535,17 +1535,15 @@ button { -webkit-user-select: none; user-select: none; }
     border-radius: 999px; pointer-events: none; box-shadow: var(--shadow-s);
     /* dunkler Ring = verbleibender Beobachtungszeitraum (voll = gerade begonnen) */
     background: conic-gradient(#232733 var(--p, 360deg), #CDD2DC 0);
-    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.95), var(--shadow-s);
+    box-shadow: var(--shadow-s);
 }
 .seat-eye-in { display: grid; place-items: center; width: 100%; height: 100%; border-radius: 999px; background: var(--marker); color: var(--marker-ink); }
 .seat-eye .pp-icon, .pp-note-eye .pp-icon { width: 11px; height: 11px; stroke-width: 2.6; }
 .pp-note-eye {
     width: 30px; height: 30px; padding: 3px; flex: none; border-radius: 999px; margin-left: 2px;
     background: conic-gradient(#232733 var(--p, 360deg), #CDD2DC 0);
-    box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.95);
 }
 .pp-note-eye .pp-icon { width: 15px; height: 15px; }
-:root[data-effective="dark"] .pp-note-eye { box-shadow: 0 0 0 1.5px #9BA4B6; }
 .pp-obs-head { display: flex; flex-direction: column; gap: 4px; }
 .pp-obs-now { display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 4px 10px 4px 8px; border-radius: 999px; background: var(--marker-soft); font-size: 14px; }
 .pp-obs-now .pp-icon { width: 17px; height: 17px; }
