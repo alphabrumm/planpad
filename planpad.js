@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.39.0';
+    const VERSION = '1.39.1';
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
@@ -96,7 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
         listImport: '<path d="M4 6h7M4 11h7M4 16h5"/><path d="M17 20V8"/><path d="M13 12l4-4 4 4"/>',
         learn: '<path d="M3 8l9-4 9 4-9 4z"/><path d="M7 10v5c0 1.5 2.2 3 5 3s5-1.5 5-3v-5"/><path d="M21 8v6"/>',
         bulb: '<path d="M9.5 18.5h5M10.5 21.5h3"/><path d="M12 2.5a6.3 6.3 0 0 0-3.8 11.3c.8.6 1.3 1.5 1.3 2.5v.2h5v-.2c0-1 .5-1.9 1.3-2.5A6.3 6.3 0 0 0 12 2.5z" fill="#FFD43B" stroke="#B8860B"/><path d="M10.2 9.5a2 2 0 0 1 1.8-1.6" stroke="#fff" stroke-width="1.4"/>',
-        sick: '<circle cx="12" cy="12" r="8.5"/><path d="M8.4 9.6q1 .9 2 0M13.6 9.6q1 .9 2 0"/><path d="M12 10.6l-1.4 3.1h1.8"/><path d="M14 13.2c-1.6 2-1.6 3.6 0 4.4 1.6-.8 1.6-2.4 0-4.4z" fill="currentColor" stroke-width="1"/>',
+        sick: '<path d="M9.4 3.8h5.2v5.6h5.6v5.2h-5.6v5.6H9.4v-5.6H3.8V9.4h5.6z" fill="currentColor" stroke-linejoin="round" stroke-width="1.2"/>',
         clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.2V12l3.2 2"/>',
         arrive: '<path d="M14.5 3.5h5.5v17h-5.5"/><circle cx="17.6" cy="12.2" r=".6" fill="currentColor"/><circle cx="7.4" cy="4.9" r="1.7"/><path d="M3.5 12.3l2.6-2.8h3l2.4 3 2.3.7"/><path d="M7.6 9.6l-1.3 5.2 2.8 2v3.8"/><path d="M6.3 14.8l-2.6 5.7"/>',
         eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
@@ -757,7 +757,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 'Irgendwo ins Leere tippen: Auswahl aufheben.',
                 'Ganz oben ohne Auswahl: „Beobachten“ (wer gerade beobachtet wird, wie lange noch; „Beobachtungen planen“) und „Statistik“ (Beobachtungen, Noten, Sterne je Kind – Zeile antippen für Details und Verlauf). Darunter die Klassennotizen (gestrichelter Kasten) – „Anlegen“ für Notizen zur ganzen Klasse.',
                 'Unterrichtsbeobachtung: Ist seit dem letzten Öffnen der Klasse eine Beobachtung abgelaufen oder beendet worden, schlägt PlanPad beim Öffnen genauso viele neue Kinder vor (zuerst die noch nie Beobachteten). Ein Zeitraum dauert 10 Schultage, Ferien zählen nicht. Das Auge oben links auf dem Tisch zeigt, wer beobachtet wird – der dunkle Ring, wie viel Zeit noch bleibt (beim Präsentieren unsichtbar).',
-                'Fehlzeiten: Schnupfnase|Uhr in der Raumleiste → Tische der fehlenden Kinder antippen (grau). Kommt jemand später: Tür-Button → Tisch antippen, PlanPad rechnet die Verspätung aus (auf 5 Min. aufgerundet). Ohne Auswahl zeigt die Leiste „Fehlzeiten“ Tag für Tag (‹ ›), beim Kind und in der Statistik stehen alle Einträge.',
+                'Fehlzeiten: Kreuz|Uhr in der Raumleiste → Tische der fehlenden Kinder antippen (grau). Kommt jemand später: Tür-Button → Tisch antippen, PlanPad rechnet die Verspätung aus (auf 5 Min. aufgerundet). Ohne Auswahl zeigt die Leiste „Fehlzeiten“ Tag für Tag (‹ ›), beim Kind und in der Statistik stehen alle Einträge.',
                 'Unter der Notiz: Sterne je Kategorie (neue Klassen: Verhalten und Selbstorganisation) – Daumen hoch/runter = ±½ Stern. Stift: umbenennen oder entfernen. „weitere hinzufügen“: eigene Kategorie (bis zu 10) für diese Klasse oder alle.',
                 'Notizen gelten in allen Sitzplänen. Beim Präsentieren werden sie nie angezeigt.'
             ]
@@ -889,7 +889,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'fix-conflicts': 'Verletzte Regeln automatisch lösen – mit möglichst wenig Umsetzen.',
         'layout-btn': 'Layouts: Tische in Reihen, Paaren, Gruppen, U-Form oder Prüfungsform aufstellen; eigene Vorlagen speichern.',
         'add-square': 'Neuen Tisch in den Raum stellen.',
-        'absent-btn': 'Wer fehlt heute? Tische der fehlenden Kinder antippen. Sie werden grau mit Schnupfnase. Fehlzeiten stehen beim Kind und in der Statistik.',
+        'absent-btn': 'Wer fehlt heute? Tische der fehlenden Kinder antippen. Sie werden grau mit Kreuz. Fehlzeiten stehen beim Kind und in der Statistik.',
         'arrive-btn': 'Kind kommt in den Raum: Tisch antippen. Stand es auf „fehlt“, rechnet PlanPad die Verspätung aus (auf 5 Minuten aufgerundet), sonst nur „zu spät“.',
         'clear-seats': 'Pinsel: Kinder von den Tischen lösen – alle oder einzelne. Ist ein Tisch gewählt, nur diesen.',
         'clear-tables': 'Papierkorb: Tische löschen – alle oder einzelne. Ist ein Tisch gewählt, nur diesen.',
@@ -6539,7 +6539,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return box;
     }
 
-    /* ----- Fehlzeiten: fehlt (Schnupfnase) und zu spät (Uhr), je Datum ----- */
+    /* ----- Fehlzeiten: fehlt (Kranken-Kreuz) und zu spät (Uhr), je Datum ----- */
     function normAbsences(v) {
         const okDay = s2 => typeof s2 === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(s2);
         return (Array.isArray(v) ? v : []).filter(a => a && typeof a.name === 'string' && (a.from || a.to)).map(a => {
