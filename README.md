@@ -115,8 +115,8 @@ löscht die lokal gespeicherten Pläne nicht nach längerer Nichtnutzung.
   gespeichert in `localStorage['planpad.accent']`.
 
 ## Fehlzeiten (ab 1.39.0)
-- Raumleiste rechts neben dem Papierkorb: „Kreuz | Uhr“ (wer fehlt heute? – Tische antippen, Speichern;
-  erneut öffnen = vorausgewählt, abwählen korrigiert) und „Tür“ (gerade gekommen: Verspätung = Zeit seit „fehlt“,
+- Raumleiste rechts neben dem Papierkorb: „rotes Kreuz“ (wer fehlt heute? – Tische antippen, Speichern;
+  erneut öffnen = vorausgewählt, abwählen korrigiert) und „grüne Tür“ (gerade gekommen: Verspätung = Zeit seit „fehlt“,
   auf 5 Min. aufgerundet; ohne vorheriges „fehlt“ nur „zu spät“).
 - Tische: fehlend grau mit Kreuz, verspätet mit Uhr (nur am selben Tag; nicht beim Präsentieren/Drucken).
 - Anzeigen: Notizen-Leiste ohne Auswahl „Fehlzeiten“ mit Tagesblättern ‹ ›; Schüleransicht mit Zusammenfassung und

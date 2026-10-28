@@ -1766,3 +1766,7 @@ button { -webkit-user-select: none; user-select: none; }
 .pp-absdays-head .pp-iconbtn:disabled { color: var(--line); }
 .pp-absdays-day { min-width: 74px; text-align: center; font-weight: 700; font-size: 13.5px; }
 .pp-absdays p { margin: 4px 0 0; font-size: 13.5px; line-height: 1.45; }
+
+.pp-absent-btn { color: var(--danger); }
+.pp-absent-btn .pp-icon { width: 20px; height: 20px; }
+.pp-arrive-btn { color: var(--ok); }

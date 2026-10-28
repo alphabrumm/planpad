@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.39.1';
+    const VERSION = '1.39.2';
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
@@ -757,7 +757,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 'Irgendwo ins Leere tippen: Auswahl aufheben.',
                 'Ganz oben ohne Auswahl: „Beobachten“ (wer gerade beobachtet wird, wie lange noch; „Beobachtungen planen“) und „Statistik“ (Beobachtungen, Noten, Sterne je Kind – Zeile antippen für Details und Verlauf). Darunter die Klassennotizen (gestrichelter Kasten) – „Anlegen“ für Notizen zur ganzen Klasse.',
                 'Unterrichtsbeobachtung: Ist seit dem letzten Öffnen der Klasse eine Beobachtung abgelaufen oder beendet worden, schlägt PlanPad beim Öffnen genauso viele neue Kinder vor (zuerst die noch nie Beobachteten). Ein Zeitraum dauert 10 Schultage, Ferien zählen nicht. Das Auge oben links auf dem Tisch zeigt, wer beobachtet wird – der dunkle Ring, wie viel Zeit noch bleibt (beim Präsentieren unsichtbar).',
-                'Fehlzeiten: Kreuz|Uhr in der Raumleiste → Tische der fehlenden Kinder antippen (grau). Kommt jemand später: Tür-Button → Tisch antippen, PlanPad rechnet die Verspätung aus (auf 5 Min. aufgerundet). Ohne Auswahl zeigt die Leiste „Fehlzeiten“ Tag für Tag (‹ ›), beim Kind und in der Statistik stehen alle Einträge.',
+                'Fehlzeiten: rotes Kreuz in der Raumleiste → Tische der fehlenden Kinder antippen (grau). Kommt jemand später: grüne Tür → Tisch antippen, PlanPad rechnet die Verspätung aus (auf 5 Min. aufgerundet). Ohne Auswahl zeigt die Leiste „Fehlzeiten“ Tag für Tag (‹ ›), beim Kind und in der Statistik stehen alle Einträge.',
                 'Unter der Notiz: Sterne je Kategorie (neue Klassen: Verhalten und Selbstorganisation) – Daumen hoch/runter = ±½ Stern. Stift: umbenennen oder entfernen. „weitere hinzufügen“: eigene Kategorie (bis zu 10) für diese Klasse oder alle.',
                 'Notizen gelten in allen Sitzplänen. Beim Präsentieren werden sie nie angezeigt.'
             ]
