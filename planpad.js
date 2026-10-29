@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.40.3';
+    const VERSION = '1.40.4';
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
@@ -5398,6 +5398,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function fillKindSelect(sel, value) {
         sel.textContent = '';
+        const none = document.createElement('option');
+        none.value = '';
+        none.textContent = '–';
+        sel.appendChild(none);
         const kinds = noteKinds();
         if (value && !kinds.includes(value)) kinds.push(value);
         kinds.forEach(k => { const o = document.createElement('option'); o.value = k; o.textContent = k; sel.appendChild(o); });
@@ -5405,7 +5409,7 @@ document.addEventListener('DOMContentLoaded', () => {
         add.value = '__add';
         add.textContent = '+ Art ergänzen …';
         sel.appendChild(add);
-        sel.value = value || kinds[0];
+        sel.value = value || '';
     }
 
     function saveDraft() {
@@ -5413,7 +5417,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!noteForm || !noteStudent) return false;
         const lesson = noteForm.lesson.value.trim();
         const grade = noteForm.grade.value.trim();
-        const kind = noteForm.kind.value && noteForm.kind.value !== '__add' ? noteForm.kind.value : NOTE_KINDS_BASE[0];
+        const kind = noteForm.kind.value && noteForm.kind.value !== '__add' ? noteForm.kind.value : '';   // leer = keine Art
         if (!lesson && !grade) return false;
         const note = editingNote
             ? { ...editingNote, lesson, grade, kind, edited: new Date().toISOString() }
@@ -5836,7 +5840,7 @@ document.addEventListener('DOMContentLoaded', () => {
         kl.appendChild(kind);
         gradeRow.append(gl, kl);
         form.appendChild(gradeRow);
-        fillKindSelect(kind, editingNote && editingNote.kind ? editingNote.kind : NOTE_KINDS_BASE[0]);
+        fillKindSelect(kind, editingNote && editingNote.kind ? editingNote.kind : '');
         let lastKind = kind.value;
         kind.addEventListener('change', async () => {
             if (kind.value !== '__add') { lastKind = kind.value; return; }

@@ -1,7 +1,7 @@
 /* PlanPad Service Worker: macht die App nach dem ersten Laden offline nutzbar.
    Strategie: erst Netz, bei fehlender Verbindung aus dem Zwischenspeicher.
    Es werden ausschließlich die App-Dateien zwischengespeichert – niemals Schülerdaten. */
-const CACHE = "planpad-v76";
+const CACHE = "planpad-v77";
 
 self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
