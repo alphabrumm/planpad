@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.40.4';
+    const VERSION = '1.40.5';
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
@@ -6363,11 +6363,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         if (v === 'del') {
             const n = voteCount(cat.id);
-            const ok = await ui.confirm(`„${cat.name}“ entfernen?`,
-                n ? `Damit ${n === 1 ? 'wird auch die vergebene Stimme' : `werden auch alle ${n} vergebenen Stimmen`} dieser Kategorie in „${currentName}“ gelöscht. Das lässt sich nicht rückgängig machen.`
+            const box = document.createElement('label');
+            box.className = 'pp-cat-allbox';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.id = 'cat-del-all';
+            box.append(cb, document.createTextNode(' In allen Klassen entfernen'));
+            const ok = await sheet({
+                title: `„${cat.name}“ entfernen?`,
+                text: n ? `Damit ${n === 1 ? 'wird auch die vergebene Stimme' : `werden auch alle ${n} vergebenen Stimmen`} dieser Kategorie in „${currentName}“ gelöscht. Das lässt sich nicht rückgängig machen.`
                     : `Die Kategorie verschwindet aus „${currentName}“. Andere Klassen bleiben unverändert.`,
-                'Entfernen', true);
-            if (!ok) return false;
+                content: box,
+                buttons: [{ label: 'Abbrechen', value: false }, { label: 'Entfernen', value: true, kind: 'danger' }]
+            });
+            if (ok !== true) return false;
+            if (cb.checked) return removeCatEverywhere(cat);
             classCats = classCats.filter(c => c.id !== cat.id);
             Object.values(votes).forEach(r => { if (r) delete r[cat.id]; });
             saveCurrentPlan(true);
@@ -6378,6 +6388,39 @@ document.addEventListener('DOMContentLoaded', () => {
         if (classCats.some(c => c.id !== cat.id && c.name.toLocaleLowerCase('de') === v.trim().toLocaleLowerCase('de'))) { showToast(`„${v.trim()}“ gibt es schon.`, 'warn', 2500); return false; }
         classCats = classCats.map(c => (c.id === cat.id ? { ...c, name: v.trim().slice(0, 40) } : c));
         saveCurrentPlan(true);
+        return true;
+    }
+    /** Kategorie (gleiche Kennung oder gleicher Name) aus allen Klassen und der Vorlage entfernen – samt Stimmen */
+    async function removeCatEverywhere(cat) {
+        saveCurrentPlan(true);
+        const same = c => c.id === cat.id || c.name.toLocaleLowerCase('de') === cat.name.toLocaleLowerCase('de');
+        const plans = readPlans();
+        let classes = 0, stimmen = 0;
+        Object.values(plans).forEach(pl => {
+            const hit = catsOfPlan(pl).filter(same);
+            if (!hit.length) return;
+            classes++;
+            hit.forEach(h => Object.values(pl.votes || {}).forEach(r => { stimmen += ((r && r[h.id]) || []).length; }));
+        });
+        const ok = await ui.confirm(`„${cat.name}“ aus allen Klassen entfernen?`,
+            `Die Kategorie wird in ${countText(classes, 'Klasse', 'Klassen')} entfernt${stimmen ? ` – samt ${stimmen === 1 ? 'der vergebenen Stimme' : `allen ${stimmen} vergebenen Stimmen`}` : ''}. Neue Klassen bekommen sie auch nicht mehr. Das lässt sich nicht rückgängig machen.`,
+            'Überall entfernen', true);
+        if (!ok) return false;
+        Object.values(plans).forEach(pl => {
+            const list = catsOfPlan(pl);
+            const hit = list.filter(same);
+            if (!hit.length) return;
+            pl.ratingCats = list.filter(c => !same(c));
+            pl.catsV2 = true;
+            hit.forEach(h => Object.values(pl.votes || {}).forEach(r => { if (r) delete r[h.id]; }));
+        });
+        writePlans(plans);
+        writeCatTemplate(catTemplate().filter(c => !same(c)));
+        // geöffnete Klasse neu übernehmen
+        const cur = plans[currentName];
+        if (cur) { classCats = catsOfPlan(cur); votes = normVotes(cur.votes); }
+        saveCurrentPlan(true);
+        showToast(`„${cat.name}“ aus ${countText(classes, 'Klasse', 'Klassen')} entfernt.`, 'ok', 2500);
         return true;
     }
     /** „weitere hinzufügen“: Name, Anzahl Sterne, Startwert – für diese Klasse oder alle */

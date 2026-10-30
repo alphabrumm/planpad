@@ -1816,3 +1816,6 @@ button { -webkit-user-select: none; user-select: none; }
     .pp-roombar .pp-tooldiv { margin: 0 2px; }
     .pp-table-tools, .pp-roombar-tools { gap: 0; }
 }
+
+.pp-cat-allbox { display: flex; align-items: center; gap: 8px; margin: 4px 0 2px; font-weight: 700; font-size: 15px; }
+.pp-cat-allbox input { width: 20px; height: 20px; }
