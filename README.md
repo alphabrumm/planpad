@@ -37,7 +37,16 @@ Touchfreundlicher Sitzplan-Editor für den Unterricht. Gestaltung angelehnt an J
 ## Datenschutz
 
 - Alles läuft lokal im Browser: kein Server, keine Cloud, keine automatische Gesichtserkennung.
-- Klassen, Sitzpläne und Notizen liegen im `localStorage`, Gesichtsausschnitte (200 × 200 px) in der IndexedDB des Geräts.
+- Klassen, Sitzpläne, Notizen und Einstellungen liegen seit 1.41.0 in der IndexedDB des Geräts (Datenbank `planpad`,
+  Store `kv`), Gesichtsausschnitte (200 × 200 px) in der IndexedDB `sitzplan-fotos`.
+- Übernahme aus älteren Versionen: Beim ersten Start werden alle `planpad.*`-Einträge aus dem `localStorage` in die
+  IndexedDB kopiert und nachgelesen (bei Abweichung wird abgebrochen, nichts gelöscht). Die alten Kopien bleiben
+  mindestens einen Tag als Sicherheitsnetz liegen und werden danach entfernt – außer `planpad.theme` und
+  `planpad.accent`, die für das sofortige Einfärben beim Laden gespiegelt bleiben.
+- Ist IndexedDB nicht nutzbar (z. B. gesperrt), arbeitet PlanPad wie bisher mit dem `localStorage`. PlanPad bittet den
+  Browser um dauerhaften Speicher (`navigator.storage.persist()`).
+- Die unten genannten Test-Schalter (`planpad.noDemo` usw.) werden weiterhin im `localStorage` gesetzt; sie werden beim
+  Start übernommen. `localStorage['planpad.testMirror'] = '1'` hält den `localStorage` maßgeblich (nur für Tests).
 - Das Klassenfoto selbst wird nie gespeichert.
 - Dateien aus „Als Datei sichern“ enthalten Fotos und Notizen nur auf ausdrücklichen Wunsch (dann mit Passwort empfohlen).
 - Die Schrift (Atkinson Hyperlegible, SIL OFL) liegt im Ordner `fonts/`. Es werden keine externen Dienste geladen.

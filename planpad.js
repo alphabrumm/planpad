@@ -1,17 +1,154 @@
 /* ==========================================================================
    PlanPad – Sitzpläne am iPad
    Alles läuft lokal im Browser: keine Server, keine Cloud, keine
-   automatische Gesichtserkennung. Pläne liegen im localStorage,
-   Gesichtsausschnitte in der IndexedDB dieses Geräts.
+   automatische Gesichtserkennung. Alle Daten liegen in der IndexedDB
+   dieses Geräts (siehe „Speicher“ unten).
    ========================================================================== */
 'use strict';
 
-document.addEventListener('DOMContentLoaded', () => {
+/* ==========================================================================
+   Speicher: IndexedDB (Datenbank „planpad“, Tabelle „kv“), beim Start einmal
+   in den Arbeitsspeicher geladen – Lesen bleibt dadurch sofort möglich,
+   jede Änderung wird gleich in die IndexedDB geschrieben.
+   Übernahme aus dem früheren localStorage ohne Verlust: kopieren, nachlesen,
+   die alten Kopien erst frühestens einen Tag später entfernen.
+   Ist IndexedDB nicht nutzbar, arbeitet PlanPad wie bisher mit localStorage.
+   ========================================================================== */
+const kv = (() => {
+    const PREFIX = 'planpad.';
+    const MOVED = 'planpad.__movedAt';
+    // Hell/Dunkel und Akzentfarbe zusätzlich im localStorage: index.html liest sie vor dem Start (kein Aufblitzen)
+    const LS_KEEP = new Set(['planpad.theme', 'planpad.accent']);
+    const cache = new Map();
+    const errorHandlers = [];
+    let db = null;
+    let mode = 'idb';
+    let queue = Promise.resolve();
+    let mirror = false;     // nur für automatische Tests: localStorage bleibt maßgeblich
+    try { mirror = localStorage.getItem('planpad.testMirror') === '1'; } catch { /* egal */ }
+
+    function openDb(version) {
+        return new Promise((resolve, reject) => {
+            if (!window.indexedDB) { reject(new Error('IndexedDB fehlt')); return; }
+            const req = version ? indexedDB.open('planpad', version) : indexedDB.open('planpad');
+            req.onupgradeneeded = () => { if (!req.result.objectStoreNames.contains('kv')) req.result.createObjectStore('kv'); };
+            req.onsuccess = () => {
+                const d = req.result;
+                if (d.objectStoreNames.contains('kv')) { resolve(d); return; }
+                // Datenbank ohne Tabelle (z. B. von außen angelegt): Version erhöhen, Tabelle anlegen
+                const v = d.version + 1;
+                d.close();
+                openDb(v).then(resolve, reject);
+            };
+            req.onerror = () => reject(req.error);
+            req.onblocked = () => reject(new Error('IndexedDB blockiert'));
+        });
+    }
+    function readAll() {
+        return new Promise((resolve, reject) => {
+            const out = new Map();
+            const req = db.transaction('kv', 'readonly').objectStore('kv').openCursor();
+            req.onsuccess = () => { const c = req.result; if (c) { out.set(c.key, c.value); c.continue(); } else resolve(out); };
+            req.onerror = () => reject(req.error);
+        });
+    }
+    function putMany(entries) {
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction('kv', 'readwrite');
+            const st = tx.objectStore('kv');
+            entries.forEach(([k, v]) => (v === null ? st.delete(k) : st.put(v, k)));
+            tx.oncomplete = () => resolve();
+            tx.onerror = () => reject(tx.error);
+            tx.onabort = () => reject(tx.error || new Error('abgebrochen'));
+        });
+    }
+    function lsKeys() {
+        const out = [];
+        try {
+            for (let i = 0; i < localStorage.length; i++) {
+                const k = localStorage.key(i);
+                if (k && k.startsWith(PREFIX) && k !== 'planpad.testMirror') out.push(k);
+            }
+        } catch { /* kein localStorage */ }
+        return out;
+    }
+    function useLocalStorage() {
+        db = null;
+        mode = 'ls';
+        cache.clear();
+        lsKeys().forEach(k => { try { cache.set(k, localStorage.getItem(k)); } catch { /* egal */ } });
+    }
+    async function init() {
+        try {
+            db = await openDb();
+            if (mirror) { useLocalStorage(); mode = 'mirror'; db = await openDb(); return; }
+            const stored = await readAll();
+            stored.forEach((v, k) => cache.set(k, v));
+            const now = Date.now();
+            if (!cache.has(MOVED)) {
+                // erste Übernahme: alles aus localStorage kopieren, was in der IndexedDB noch fehlt
+                const imp = [];
+                lsKeys().forEach(k => {
+                    let v = null;
+                    try { v = localStorage.getItem(k); } catch { /* egal */ }
+                    if (v !== null && !cache.has(k)) imp.push([k, v]);
+                });
+                if (imp.length) await putMany(imp);
+                const check = await readAll();
+                if (imp.some(([k, v]) => check.get(k) !== v)) throw new Error('Übernahme unvollständig');
+                imp.forEach(([k, v]) => cache.set(k, v));
+                cache.set(MOVED, String(now));
+                await putMany([[MOVED, String(now)]]);
+            } else if (now - Number(cache.get(MOVED)) > 864e5) {
+                // einen Tag später: alte Kopien entfernen – nur Einträge, die sicher in der IndexedDB liegen
+                lsKeys().forEach(k => { if (cache.has(k) && !LS_KEEP.has(k)) { try { localStorage.removeItem(k); } catch { /* egal */ } } });
+            }
+            if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+        } catch (err) {
+            console.warn('IndexedDB nicht nutzbar – PlanPad speichert weiter im localStorage.', err);
+            useLocalStorage();
+        }
+    }
+    function write(k, v) {
+        if (v === null) cache.delete(k); else cache.set(k, v);
+        if (mode === 'idb' && LS_KEEP.has(k)) {
+            try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch { /* egal */ }
+        }
+        if (mode === 'ls' || mode === 'mirror') {
+            // localStorage-Modus: Fehler (z. B. Speicher voll) wie bisher an den Aufrufer weitergeben
+            if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v);
+        }
+        if (db) {
+            queue = queue.then(() => putMany([[k, v]])).catch(err => {
+                console.error(err);
+                errorHandlers.forEach(h => { try { h(err); } catch { /* egal */ } });
+            });
+        }
+    }
+    return {
+        init,
+        get: k => (cache.has(k) ? cache.get(k) : null),
+        set: (k, v) => write(k, String(v)),
+        remove: k => { write(k, null); try { localStorage.removeItem(k); } catch { /* egal */ } },
+        onError: h => errorHandlers.push(h),
+        flush: () => queue,
+        mode: () => mode
+    };
+})();
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await kv.init();
 
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.40.5';
+    const VERSION = '1.41.0';
+    let kvWarned = false;
+    kv.onError(() => {
+        if (kvWarned) return;
+        kvWarned = true;
+        showToast('Speichern auf diesem Gerät fehlgeschlagen (Speicher voll?). Bitte „Alle Klassen als Datei sichern“.', 'warn', 8000);
+    });
     const $ = id => document.getElementById(id);
     const app = $('app');
     const classroom = $('classroom');
@@ -794,9 +931,9 @@ document.addEventListener('DOMContentLoaded', () => {
     /** Beim allerersten Öffnen die Anleitung zeigen */
     function firstRunHelp() {
         let seen = null;
-        try { seen = localStorage.getItem(KEY_HELP); } catch { return Promise.resolve(); }
+        try { seen = kv.get(KEY_HELP); } catch { return Promise.resolve(); }
         if (seen) return Promise.resolve();
-        try { localStorage.setItem(KEY_HELP, new Date().toISOString()); } catch { /* egal */ }
+        try { kv.set(KEY_HELP, new Date().toISOString()); } catch { /* egal */ }
         return openHelp(0);
     }
 
@@ -1027,7 +1164,7 @@ document.addEventListener('DOMContentLoaded', () => {
        ================================================== */
     const KEY_LEARN = 'planpad.learn';     // { Klassen-ID: bestes Ergebnis }
     function readLearn() {
-        try { const v = JSON.parse(localStorage.getItem(KEY_LEARN) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; }
+        try { const v = JSON.parse(kv.get(KEY_LEARN) || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; }
     }
     /** Kinder der Klasse, für die es ein Foto gibt */
     function photographed() { return students.filter(n => faces.has(n)); }
@@ -1051,7 +1188,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const all = readLearn();
         if (n <= (Number(all[currentPlanId]) || 0)) return false;
         all[currentPlanId] = n;
-        try { localStorage.setItem(KEY_LEARN, JSON.stringify(all)); } catch { /* egal */ }
+        try { kv.set(KEY_LEARN, JSON.stringify(all)); } catch { /* egal */ }
         return true;
     }
 
@@ -1698,12 +1835,12 @@ document.addEventListener('DOMContentLoaded', () => {
     /* ----- Eigene Vorlagen (nur Tischpositionen, keine Namen – gelten für alle Pläne) ----- */
     function readTemplates() {
         try {
-            const v = JSON.parse(localStorage.getItem(KEY_TEMPLATES) || '[]');
+            const v = JSON.parse(kv.get(KEY_TEMPLATES) || '[]');
             return Array.isArray(v) ? v.filter(t => t && t.id && Array.isArray(t.positions) && t.positions.length) : [];
         } catch { return []; }
     }
     function writeTemplates(list) {
-        try { localStorage.setItem(KEY_TEMPLATES, JSON.stringify(list)); return true; } catch (err) {
+        try { kv.set(KEY_TEMPLATES, JSON.stringify(list)); return true; } catch (err) {
             console.error(err);
             ui.alert('Vorlage nicht gespeichert', 'Der Browserspeicher ist voll oder gesperrt.');
             return false;
@@ -2206,7 +2343,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function saveView() {
-        try { localStorage.setItem(KEY_VIEW, JSON.stringify({ zoom, fitMode, sidebar: !app.classList.contains('sidebar-collapsed') })); } catch { /* egal */ }
+        try { kv.set(KEY_VIEW, JSON.stringify({ zoom, fitMode, sidebar: !app.classList.contains('sidebar-collapsed') })); } catch { /* egal */ }
     }
 
     /**
@@ -2324,7 +2461,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // gespeicherte Ansicht wiederherstellen
     try {
-        const v = JSON.parse(localStorage.getItem(KEY_VIEW) || 'null');
+        const v = JSON.parse(kv.get(KEY_VIEW) || 'null');
         if (v) {
             zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, Number(v.zoom) || 1));
             fitMode = Boolean(v.fitMode);
@@ -3105,7 +3242,7 @@ document.addEventListener('DOMContentLoaded', () => {
        ================================================== */
     function readPlans() {
         try {
-            const v = JSON.parse(localStorage.getItem(KEY_PLANS) || '{}');
+            const v = JSON.parse(kv.get(KEY_PLANS) || '{}');
             return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
         } catch (err) {
             console.error(err);
@@ -3116,7 +3253,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let storageWarned = false;
     function writePlans(plans) {
         try {
-            localStorage.setItem(KEY_PLANS, JSON.stringify(plans));
+            kv.set(KEY_PLANS, JSON.stringify(plans));
             return true;
         } catch (err) {
             console.error(err);
@@ -3131,10 +3268,10 @@ document.addEventListener('DOMContentLoaded', () => {
     /** Übernahme der Pläne aus der alten Sitzplan-App */
     function migrateOldPlans() {
         try {
-            if (localStorage.getItem(KEY_PLANS)) return;
-            const old = JSON.parse(localStorage.getItem('sitzplaene') || 'null');
+            if (kv.get(KEY_PLANS)) return;
+            const old = JSON.parse(kv.get('sitzplaene') || 'null');
             if (old && typeof old === 'object' && Object.keys(old).length) {
-                localStorage.setItem(KEY_PLANS, JSON.stringify(old));
+                kv.set(KEY_PLANS, JSON.stringify(old));
             }
         } catch (err) { console.warn(err); }
     }
@@ -3596,7 +3733,7 @@ document.addEventListener('DOMContentLoaded', () => {
             exportedAt: old.exportedAt || null
         };
         writePlans(plans);
-        try { localStorage.setItem(KEY_CURRENT, currentName); } catch { /* egal */ }
+        try { kv.set(KEY_CURRENT, currentName); } catch { /* egal */ }
         renderPlanHeader();
         renderPlanList();
     }
@@ -3675,7 +3812,7 @@ document.addEventListener('DOMContentLoaded', () => {
         app.classList.toggle('is-editing-names', !students.length);
         observationCheck().catch(console.error).then(reminderCheck).catch(console.error);
         resetHistory();
-        try { localStorage.setItem(KEY_CURRENT, name); } catch { /* egal */ }
+        try { kv.set(KEY_CURRENT, name); } catch { /* egal */ }
         renderPlanHeader();
         renderPlanList();
         showToast(`„${name}“ geöffnet.`, 'info', 1800);
@@ -3751,7 +3888,7 @@ document.addEventListener('DOMContentLoaded', () => {
             facesByPlan.delete(goneId);
             faceStore.removePlan(goneId).catch(console.error);
             removePlanNotes(goneId);
-            try { const l = readLearn(); delete l[goneId]; localStorage.setItem(KEY_LEARN, JSON.stringify(l)); } catch { /* egal */ }
+            try { const l = readLearn(); delete l[goneId]; kv.set(KEY_LEARN, JSON.stringify(l)); } catch { /* egal */ }
         }
         if (name === currentName) {
             const rest = Object.keys(plans).sort((a, b) => String(plans[b].timestamp || '').localeCompare(String(plans[a].timestamp || '')));
@@ -4561,7 +4698,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ----- Darstellung: Hell / Dunkel / System ----- */
     function getThemeChoice() {
-        try { return localStorage.getItem(KEY_THEME) || 'auto'; } catch { return 'auto'; }
+        try { return kv.get(KEY_THEME) || 'auto'; } catch { return 'auto'; }
     }
     function applyTheme() {
         const c = getThemeChoice();
@@ -4600,18 +4737,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 b.style.setProperty('--dot-ring', a.dark);
                 b.style.setProperty('--dot-fill', a.light);
                 b.addEventListener('click', () => {
-                    try { localStorage.setItem(KEY_ACCENT, a.id); } catch { /* egal */ }
+                    try { kv.set(KEY_ACCENT, a.id); } catch { /* egal */ }
                     applyAccent(a.id);
                 });
                 box.appendChild(b);
             });
         }
         let saved = 'blau';
-        try { saved = localStorage.getItem(KEY_ACCENT) || 'blau'; } catch { /* egal */ }
+        try { saved = kv.get(KEY_ACCENT) || 'blau'; } catch { /* egal */ }
         applyAccent(saved);
     }
     document.querySelectorAll('#theme-switch [data-theme-choice]').forEach(b => b.addEventListener('click', () => {
-        try { localStorage.setItem(KEY_THEME, b.dataset.themeChoice); } catch { /* egal */ }
+        try { kv.set(KEY_THEME, b.dataset.themeChoice); } catch { /* egal */ }
         applyTheme();
     }));
     matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', applyTheme);
@@ -4704,7 +4841,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* ----- Fotos ein/aus ----- */
     let showPhotos = true;
-    try { showPhotos = localStorage.getItem(KEY_PHOTOS) !== 'off'; } catch { /* egal */ }
+    try { showPhotos = kv.get(KEY_PHOTOS) !== 'off'; } catch { /* egal */ }
     function applyPhotoVisibility() {
         document.body.classList.toggle('hide-photos', !showPhotos);
         document.querySelectorAll('#photo-switch [data-photos]').forEach(b =>
@@ -4712,7 +4849,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     document.querySelectorAll('#photo-switch [data-photos]').forEach(b => b.addEventListener('click', () => {
         showPhotos = b.dataset.photos === 'on';
-        try { localStorage.setItem(KEY_PHOTOS, showPhotos ? 'on' : 'off'); } catch { /* egal */ }
+        try { kv.set(KEY_PHOTOS, showPhotos ? 'on' : 'off'); } catch { /* egal */ }
         applyPhotoVisibility();
     }));
     applyPhotoVisibility();
@@ -5257,12 +5394,12 @@ document.addEventListener('DOMContentLoaded', () => {
        ================================================== */
     function readAllNotes() {
         try {
-            const v = JSON.parse(localStorage.getItem(KEY_NOTES) || '{}');
+            const v = JSON.parse(kv.get(KEY_NOTES) || '{}');
             return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
         } catch { return {}; }
     }
     function writeAllNotes(all) {
-        try { localStorage.setItem(KEY_NOTES, JSON.stringify(all)); return true; } catch (err) {
+        try { kv.set(KEY_NOTES, JSON.stringify(all)); return true; } catch (err) {
             console.error(err);
             ui.alert('Notiz nicht gespeichert', 'Der Browserspeicher ist voll oder gesperrt (privates Fenster?).');
             return false;
@@ -5386,7 +5523,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const NOTE_KINDS_BASE = ['Beitrag', 'Beobachtung', 'Präsentation'];
     function noteKinds() {
         let extra = [];
-        try { extra = JSON.parse(localStorage.getItem(KEY_NOTE_KINDS) || '[]'); } catch { /* egal */ }
+        try { extra = JSON.parse(kv.get(KEY_NOTE_KINDS) || '[]'); } catch { /* egal */ }
         const out = [...NOTE_KINDS_BASE];
         (Array.isArray(extra) ? extra : []).forEach(k => { if (typeof k === 'string' && k.trim() && !out.includes(k.trim())) out.push(k.trim()); });
         return out;
@@ -5394,7 +5531,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function addNoteKind(k) {
         const extra = noteKinds().slice(NOTE_KINDS_BASE.length);
         if (noteKinds().includes(k)) return;
-        try { localStorage.setItem(KEY_NOTE_KINDS, JSON.stringify([...extra, k])); } catch { /* egal */ }
+        try { kv.set(KEY_NOTE_KINDS, JSON.stringify([...extra, k])); } catch { /* egal */ }
     }
     function fillKindSelect(sel, value) {
         sel.textContent = '';
@@ -5998,13 +6135,13 @@ document.addEventListener('DOMContentLoaded', () => {
         renderNotes();
     }
     function obsSnoozed() {
-        try { return (JSON.parse(localStorage.getItem(KEY_OBS_SNOOZE) || '{}') || {})[currentPlanId] === todayIso(); } catch { return false; }
+        try { return (JSON.parse(kv.get(KEY_OBS_SNOOZE) || '{}') || {})[currentPlanId] === todayIso(); } catch { return false; }
     }
     function snoozeObs() {
         try {
-            const m = JSON.parse(localStorage.getItem(KEY_OBS_SNOOZE) || '{}') || {};
+            const m = JSON.parse(kv.get(KEY_OBS_SNOOZE) || '{}') || {};
             m[currentPlanId] = todayIso();
-            localStorage.setItem(KEY_OBS_SNOOZE, JSON.stringify(m));
+            kv.set(KEY_OBS_SNOOZE, JSON.stringify(m));
         } catch { /* egal */ }
     }
 
@@ -6022,7 +6159,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let obsChecking = false;
     async function observationCheck() {
         if (obsChecking || !students.length || document.querySelector('.pp-sheet-layer')) return;
-        try { if (localStorage.getItem('planpad.noObsPrompt')) return; } catch { /* egal */ }
+        try { if (kv.get('planpad.noObsPrompt')) return; } catch { /* egal */ }
         obsChecking = true;
         try {
             const t = todayIso();
@@ -6316,7 +6453,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     /* ----- Sterne-Kategorien: jede Klasse hat ihre eigene Liste (0–10), je Daumen ½ Stern -----
-       Vorlage für neue Klassen: localStorage planpad.catTemplate (Standard: Verhalten, Selbstorganisation) */
+       Vorlage für neue Klassen: Speicher-Eintrag planpad.catTemplate (Standard: Verhalten, Selbstorganisation) */
     const KEY_CAT_TPL = 'planpad.catTemplate';
     const MAX_CATS = 10;
     const DEFAULT_CATS = [
@@ -6331,17 +6468,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function catTemplate() {
         try {
-            const v = JSON.parse(localStorage.getItem(KEY_CAT_TPL));
+            const v = JSON.parse(kv.get(KEY_CAT_TPL));
             if (Array.isArray(v)) return v.map(normCat).filter(Boolean).slice(0, MAX_CATS);
         } catch { /* Standard */ }
         // aus Version 1.35: eigene Kategorien „für alle Klassen“ übernehmen
         let old = [];
-        try { old = JSON.parse(localStorage.getItem('planpad.ratingCats')) || []; } catch { /* egal */ }
+        try { old = JSON.parse(kv.get('planpad.ratingCats')) || []; } catch { /* egal */ }
         const extra = (Array.isArray(old) ? old : []).map(normCat).filter(c => c && !['lob', 'sol', 'soz'].includes(c.id));
         return [...DEFAULT_CATS.map(c => ({ ...c })), ...extra].slice(0, MAX_CATS);
     }
     function writeCatTemplate(list) {
-        try { localStorage.setItem(KEY_CAT_TPL, JSON.stringify(list.slice(0, MAX_CATS))); } catch { /* egal */ }
+        try { kv.set(KEY_CAT_TPL, JSON.stringify(list.slice(0, MAX_CATS))); } catch { /* egal */ }
     }
     /** Kategorien einer gespeicherten Klasse (ältere Klassen: Vorlage + ihre Zusatz-Kategorien) */
     function catsOfPlan(plan) {
@@ -7090,7 +7227,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return v;
     }
     async function loadDemo({ auto = false } = {}) {
-        try { localStorage.setItem(KEY_DEMO, '1'); } catch { /* egal */ }
+        try { kv.set(KEY_DEMO, '1'); } catch { /* egal */ }
         let data;
         try {
             const res = await fetch('demo/demo.json', { cache: 'no-cache' });
@@ -7131,7 +7268,7 @@ document.addEventListener('DOMContentLoaded', () => {
         noteForm = null;
         noteStudent = null;
         namesSession = null;
-        try { localStorage.removeItem(KEY_PLANS); localStorage.removeItem(KEY_CURRENT); localStorage.removeItem(KEY_NOTES); localStorage.removeItem(KEY_LEARN); } catch { /* egal */ }
+        try { kv.remove(KEY_PLANS); kv.remove(KEY_CURRENT); kv.remove(KEY_NOTES); kv.remove(KEY_LEARN); } catch { /* egal */ }
         facesByPlan.clear();
         faceStore.clear().catch(console.error);
         clearTimeout(autosaveTimer);
@@ -7155,10 +7292,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
     async function backupReminder() {
         let last = null;
-        try { last = localStorage.getItem(KEY_BACKUP_NOTICE); } catch { /* egal */ }
+        try { last = kv.get(KEY_BACKUP_NOTICE); } catch { /* egal */ }
         const lastTime = last ? new Date(last).getTime() : NaN;
         if (!isNaN(lastTime) && Date.now() - lastTime < WEEK_MS) return;
-        try { localStorage.setItem(KEY_BACKUP_NOTICE, new Date().toISOString()); } catch { /* egal */ }
+        try { kv.set(KEY_BACKUP_NOTICE, new Date().toISOString()); } catch { /* egal */ }
         const hasPlans = Object.keys(readPlans()).length > 0;
         const buttons = hasPlans
             ? [{ label: 'Abbrechen', value: 'ok' }, { label: 'Jetzt sichern', value: 'backup', kind: 'primary' }]
@@ -7190,7 +7327,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     async function homeScreenHint() {
         if (isStandalone() || !isAppleMobile()) return;
-        try { if (localStorage.getItem(KEY_HOME_HINT)) return; } catch { return; }
+        try { if (kv.get(KEY_HOME_HINT)) return; } catch { return; }
         const content = document.createElement('div');
         content.className = 'pp-homehint';
         content.innerHTML = `<img src="help/homescreen.webp" alt="Safari: Teilen → Zum Home-Bildschirm" class="pp-homehint-shot">
@@ -7207,7 +7344,7 @@ document.addEventListener('DOMContentLoaded', () => {
             content,
             buttons: [{ label: 'Erledigt', value: 'done', kind: 'primary' }]
         });
-        if (v === 'done') { try { localStorage.setItem(KEY_HOME_HINT, new Date().toISOString()); } catch { /* egal */ } }
+        if (v === 'done') { try { kv.set(KEY_HOME_HINT, new Date().toISOString()); } catch { /* egal */ } }
     }
 
     /** Einmal pro Schuljahr (erstes Öffnen nach dem 1. August) an das Löschen erinnern */
@@ -7215,8 +7352,8 @@ document.addEventListener('DOMContentLoaded', () => {
         await facesReady.catch(() => {});
         const boundary = lastAugustFirst();
         let last = null;
-        try { last = localStorage.getItem(KEY_PRIVACY); } catch { /* egal */ }
-        const markShown = () => { try { localStorage.setItem(KEY_PRIVACY, new Date().toISOString()); } catch { /* egal */ } };
+        try { last = kv.get(KEY_PRIVACY); } catch { /* egal */ }
+        const markShown = () => { try { kv.set(KEY_PRIVACY, new Date().toISOString()); } catch { /* egal */ } };
         if (last && new Date(last) >= boundary) return;
         const planCount = Object.keys(readPlans()).length;
         if (!planCount && !totalFaceCount() && !totalNoteCount()) { markShown(); return; }   // nichts gespeichert: kein Hinweis nötig
@@ -7247,7 +7384,7 @@ document.addEventListener('DOMContentLoaded', () => {
     {
         const plans = readPlans();
         let start = null;
-        try { start = localStorage.getItem(KEY_CURRENT); } catch { /* egal */ }
+        try { start = kv.get(KEY_CURRENT); } catch { /* egal */ }
         if (!start || !plans[start]) {
             start = Object.keys(plans).sort((a, b) => String(plans[b].timestamp || '').localeCompare(String(plans[a].timestamp || '')))[0] || null;
         }
@@ -7271,10 +7408,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // allererster Start (noch keine Klasse, Anleitung nie gesehen): Demoklasse laden
     {
         let first = false;
-        try { first = !Object.keys(readPlans()).length && !localStorage.getItem(KEY_DEMO) && !localStorage.getItem('planpad.helpSeen') && !localStorage.getItem('planpad.noDemo'); } catch { /* egal */ }
+        try { first = !Object.keys(readPlans()).length && !kv.get(KEY_DEMO) && !kv.get('planpad.helpSeen') && !kv.get('planpad.noDemo'); } catch { /* egal */ }
         if (first) {
             // allererster Start: kein Datenschutz-Hinweis zur Demoklasse (er käme sonst sofort) – im nächsten Schuljahr wieder
-            try { localStorage.setItem(KEY_PRIVACY, new Date().toISOString()); } catch { /* egal */ }
+            try { kv.set(KEY_PRIVACY, new Date().toISOString()); } catch { /* egal */ }
             loadDemo({ auto: true }).catch(console.error);
         }
     }
