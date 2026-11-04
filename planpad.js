@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.41.0';
+    const VERSION = '1.41.1';
     let kvWarned = false;
     kv.onError(() => {
         if (kvWarned) return;
@@ -6085,6 +6085,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const q = { id: String(p.id || newId()), name: p.name, start: p.start, end: p.end, done: Boolean(p.done) };
                     if (ok(p.endedAt)) q.endedAt = p.endedAt;
                     if (p.expired) q.expired = true;
+                    if (p.reset) q.reset = true;   // zählt nach „Durchlauf neu beginnen“ nicht mehr im Durchlauf, bleibt in der Statistik
                     return q;
                 })
         };
@@ -6104,7 +6105,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const t = todayIso();
         return Boolean(name) && observ.periods.some(p => !p.done && p.name === name && p.start <= t);
     }
-    const obsCount = name => observ.periods.filter(p => p.name === name).length;
+    const obsCount = name => observ.periods.filter(p => p.name === name && !p.reset).length;
     function currentPeriod(name) {
         const t = todayIso();
         return observ.periods.filter(p => !p.done && p.name === name && p.start <= t).sort((a, b) => b.end.localeCompare(a.end))[0] || null;
@@ -6319,14 +6320,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const reset = document.createElement('button');
         reset.type = 'button';
         reset.className = 'pp-textbtn pp-obs-reset';
-        reset.textContent = 'Statistik zurücksetzen';
+        reset.textContent = 'Durchlauf neu beginnen';
         reset.addEventListener('click', async () => {
-            const yes = await ui.confirm('Statistik für Beobachtungen für alle Schüler:innen zurücksetzen?', 'Counter für alle auf Null setzen', 'Zurücksetzen', true);
+            const yes = await ui.confirm('Neue Durchlaufserie beginnen', 'Der Counter für bereits durchgeführte Beobachtungen wird für alle Schüler:innen auf null zurückgesetzt. Notizen und andere Statistiken bleiben erhalten.', 'Neu beginnen', false);
             if (!yes) return;
-            observ.periods = observ.periods.filter(p => !p.done);   // abgeschlossene Beobachtungen zählen nicht mehr
+            // nur der Durchlauf-Zähler beginnt neu – abgeschlossene Beobachtungen bleiben für die Statistik erhalten
+            observ.periods.forEach(p => { if (p.done) p.reset = true; });
             saveCurrentPlan(true);
             draw();
-            showToast('Beobachtungs-Statistik zurückgesetzt.', 'ok', 2500);
+            showToast('Neue Durchlaufserie begonnen.', 'ok', 2500);
         });
         content.appendChild(reset);
         from.addEventListener('change', () => { if (from.value) to.value = addSchoolDays(from.value, OBS_DAYS); showInfo(); });

@@ -91,8 +91,9 @@ löscht die lokal gespeicherten Pläne nicht nach längerer Nichtnutzung.
 
 ## Beobachtungen planen, Demoklasse (ab 1.32.0 / 1.33.0)
 - „Du beobachtest gerade …“ → „Beobachtungen planen“: Anzahl der Vorschläge mit „Weniger/Mehr anzeigen“
-  (0 bis Klassengröße, je Klasse gemerkt). „Statistik zurücksetzen“ (Text-Button) setzt die Zähler aller
-  abgeschlossenen Beobachtungen auf 0; laufende Beobachtungen bleiben.
+  (0 bis Klassengröße, je Klasse gemerkt). „Durchlauf neu beginnen“ (Text-Button, ab 1.41.1) beginnt eine
+  neue Durchlaufserie: abgeschlossene Beobachtungen werden mit `reset: true` markiert und zählen nicht mehr für die
+  Vorschläge; in der Statistik (Phasen, beobachtete Tage) bleiben sie erhalten, ebenso Notizen und laufende Beobachtungen.
 - Demoklasse `demo/demo.json` (Format einer Sicherungsdatei, Daten relativ zum Öffnungstag): wird beim
   allerersten Start geladen und jederzeit über Menü ☰ → „Demoklasse laden“. 15 Pixel-Gesichter
   (`demo/klassenfoto.png` = Klassenfoto zum Ausprobieren von „Gesichter zuordnen“), 3 Sitzpläne, Regeln,
