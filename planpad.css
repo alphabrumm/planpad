@@ -1922,3 +1922,23 @@ html.pp-locked, html.pp-locked body { overflow: hidden; }
     .pp-pin-key { min-height: 48px; font-size: 22px; }
     .pp-lock-logo { width: 40px; height: 40px; }
 }
+
+/* Willkommen (erster Start) und Demo-Hinweis */
+.pp-lock-center { text-align: center; }
+.pp-welcome-choices { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
+.pp-welcome-choice {
+    display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 16px 18px; min-height: 76px;
+    border: 1px solid var(--line); border-radius: var(--radius-l); background: var(--surface); color: var(--ink);
+    font: inherit; cursor: pointer; box-shadow: var(--shadow-s);
+}
+.pp-welcome-choice b { font-size: 19px; }
+.pp-welcome-choice span { font-size: 15px; color: var(--ink-2); line-height: 1.4; }
+.pp-welcome-choice.is-primary { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
+.pp-welcome-choice.is-primary span { color: var(--accent-ink); opacity: .9; }
+.pp-welcome-choice:active { transform: translateY(1px); }
+.pp-demo-bar {
+    position: fixed; right: max(12px, env(safe-area-inset-right)); bottom: calc(12px + env(safe-area-inset-bottom)); z-index: 30;   /* unter Menü und Dialogen */
+    display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 14px;
+    background: var(--marker); color: var(--marker-ink); border-radius: 999px; box-shadow: var(--shadow-lg); font-size: 14.5px;
+}
+@media print { .pp-demo-bar { display: none; } }

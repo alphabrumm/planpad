@@ -144,6 +144,7 @@ const kv = (() => {
     }
     function write(k, v) {
         if (v === null) cache.delete(k); else cache.set(k, v);
+        if (mode === 'memory') return;
         if (mode === 'idb' && LS_KEEP.has(k)) {
             try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch { /* egal */ }
         }
@@ -171,6 +172,12 @@ const kv = (() => {
         mode = 'idb';
         lsKeys().forEach(k => { if (cache.has(k) && !LS_KEEP.has(k)) { try { localStorage.removeItem(k); } catch { /* egal */ } } });
     }
+    /** Demo: ab jetzt nur im Arbeitsspeicher, nichts mehr auf dem Gerät */
+    function useMemory() {
+        db = null;
+        mode = 'memory';
+        cache.clear();
+    }
     async function readMeta() {
         try {
             db = db || await openDb();
@@ -187,6 +194,8 @@ const kv = (() => {
         readMeta,
         saveMeta,
         sealAll,
+        useMemory,
+        hasData: () => cache.has('planpad.plans') || cache.has('planpad.notes'),
         close: () => { if (db) { db.close(); db = null; } },
         get: k => (cache.has(k) ? cache.get(k) : null),
         set: (k, v) => write(k, String(v)),
@@ -203,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.42.0';
+    const VERSION = '1.43.0';
     let kvWarned = false;
     kv.onError(() => {
         if (kvWarned) return;
@@ -4865,6 +4874,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const queued = fn => { const p = chain.then(fn); chain = p.catch(() => {}); return p; };
         return {
             async loadAll() {
+                if (lock.isDemo()) return [];
                 const keys = await run('readonly', s => s.getAllKeys());
                 const values = await run('readonly', s => s.getAll());
                 const out = [];
@@ -4879,14 +4889,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return out;
             },
             put: (key, url) => queued(async () => {
+                if (lock.isDemo()) return null;     // Demo: Fotos nur im Arbeitsspeicher
                 const v = vault.active() ? await vault.seal(url, lock.faceAad(key)) : url;
                 return run('readwrite', s => s.put(v, key));
             }),
-            remove: key => queued(() => run('readwrite', s => s.delete(key))),
-            clear: () => queued(() => run('readwrite', s => s.clear())),
+            remove: key => queued(() => (lock.isDemo() ? null : run('readwrite', s => s.delete(key)))),
+            clear: () => queued(() => (lock.isDemo() ? null : run('readwrite', s => s.clear()))),
             flush: () => chain,
             /** alle Fotos eines Plans löschen */
             async removePlan(id) {
+                if (lock.isDemo()) return;
                 const keys = await run('readonly', s => s.getAllKeys());
                 const mine = keys.filter(k => Array.isArray(k) && k[0] === id);
                 if (mine.length) await queued(() => run('readwrite', s => { mine.forEach(k => s.delete(k)); return null; }));
@@ -7326,7 +7338,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         await importBackupText(JSON.stringify(data), { demo: true });
         app.classList.remove('is-editing-names');
-        showToast('Demoklasse geladen – probier alles aus! Löschen: Menü ☰ → Papierkorb neben der Klasse.', 'ok', 6000);
+        showToast(lock.isDemo() ? 'Willkommen in der Demo – probier alles aus!' : 'Demoklasse geladen – probier alles aus! Löschen: Menü ☰ → Papierkorb neben der Klasse.', 'ok', 6000);
     }
     on('demo-btn', 'click', () => { closeDrawer(); loadDemo(); });
     /* ==================================================
@@ -7499,6 +7511,17 @@ document.addEventListener('DOMContentLoaded', async () => {
     {
         let first = false;
         try { first = !Object.keys(readPlans()).length && !kv.get(KEY_DEMO) && !kv.get('planpad.helpSeen') && !kv.get('planpad.noDemo'); } catch { /* egal */ }
+        if (lock.isDemo()) {
+            first = true;
+            const bar = document.createElement('div');
+            bar.className = 'pp-demo-bar';
+            bar.setAttribute('role', 'status');
+            bar.innerHTML = '<span><b>Demo</b> – nichts wird gespeichert</span><button type="button" class="pp-btn pp-btn-small pp-btn-primary">Jetzt loslegen</button>';
+            bar.querySelector('button').addEventListener('click', async () => {
+                if (await ui.confirm('Demo beenden?', 'Die Demo wird verworfen. Danach richtest du PIN, Wiederherstellungsschlüssel und Face ID ein und legst deine eigenen Klassen an.', 'Loslegen')) lock.leaveDemo();
+            });
+            document.body.appendChild(bar);
+        }
         if (first) {
             // allererster Start: kein Datenschutz-Hinweis zur Demoklasse (er käme sonst sofort) – im nächsten Schuljahr wieder
             try { kv.set(KEY_PRIVACY, new Date().toISOString()); } catch { /* egal */ }

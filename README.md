@@ -34,6 +34,17 @@ Touchfreundlicher Sitzplan-Editor für den Unterricht. Gestaltung angelehnt an J
   Kärtchen und Tische zeigen weiter den Vornamen (bei Gleichheit mit Kürzel), das Kärtchen-Popup den vollen Namen.
   Ein CSV/Excel-Import erscheint ebenso kommagetrennt im Textfeld.
 
+## Willkommen und Demo (ab 1.43.0)
+
+- Allererster Start (keine Klassen/Notizen gespeichert, keine Sperre): Willkommen-Bildschirm mit
+  „Demo ansehen“ oder „Direkt loslegen“.
+- Demo: ohne PIN/Schlüssel/Passkey, Demoklasse wird geladen, `kv` läuft nur im Arbeitsspeicher (Modus `memory`),
+  Fotos werden nicht in die IndexedDB geschrieben – nach dem Neuladen ist alles weg (wieder Willkommen).
+  Hinweis unten rechts „Demo – nichts wird gespeichert“ mit „Jetzt loslegen“ → Rückfrage → Neuladen direkt in
+  die Einrichtung (`sessionStorage['planpad.startSetup']`).
+- Direkt loslegen: Einrichtung der Sperre, danach leere App (keine Demoklasse automatisch).
+- Wer schon Daten hat (Update von älteren Versionen), sieht keinen Willkommen-Bildschirm, sondern gleich die Einrichtung.
+
 ## Sperre und Verschlüsselung (ab 1.42.0)
 
 - Beim Start ist PlanPad gesperrt. Beim ersten Start mit 1.42.0 führt eine Einrichtung durch: PIN festlegen,

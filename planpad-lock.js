@@ -732,6 +732,30 @@ const lock = (() => {
         });
     }
 
+    /* ---------- Willkommen (allererster Start) ---------- */
+    let demo = false;
+    function welcome() {
+        return new Promise(resolve => {
+            const card = screen(`${LOGO}<h1>Willkommen bei PlanPad!</h1>
+                <p class="pp-lock-text pp-lock-center">Sitzpläne mischen, Notizen, Beobachtungen und Fehlzeiten – alles direkt auf diesem Gerät, ohne Cloud.</p>
+                <div class="pp-welcome-choices">
+                    <button type="button" class="pp-welcome-choice" data-act="demo">
+                        <b>Demo ansehen</b><span>Mit einer Beispielklasse ausprobieren. Ohne PIN – es wird nichts gespeichert.</span></button>
+                    <button type="button" class="pp-welcome-choice is-primary" data-act="start">
+                        <b>Direkt loslegen</b><span>PlanPad mit PIN und Face ID schützen und eigene Klassen anlegen.</span></button>
+                </div>`);
+            card.addEventListener('click', e => {
+                const b = e.target.closest('button[data-act]');
+                if (b) resolve(b.dataset.act);
+            });
+        });
+    }
+    /** Demo beenden: neu laden und direkt die Einrichtung zeigen */
+    function leaveDemo() {
+        try { sessionStorage.setItem('planpad.startSetup', '1'); } catch { /* egal */ }
+        location.reload();
+    }
+
     /* ---------- Start ---------- */
     async function gate() {
         const noLock = testFlag('planpad.noLock') === '1';     // vor kv.init lesen (räumt den localStorage auf)
@@ -749,6 +773,18 @@ const lock = (() => {
         // nur ohne bestehende Sperre: automatische Tests dürfen die Einrichtung überspringen
         if (kv.mode() !== 'idb' || noLock) return;
         if (!window.crypto || !crypto.subtle) return;
+        let skipWelcome = false;
+        try { skipWelcome = sessionStorage.getItem('planpad.startSetup') === '1'; sessionStorage.removeItem('planpad.startSetup'); } catch { /* egal */ }
+        if (!kv.hasData() && !skipWelcome) {
+            if (await welcome() === 'demo') {
+                // Demo: nichts auf dem Gerät speichern, keine Sperre
+                kv.useMemory();
+                demo = true;
+                closeOverlay();
+                return;
+            }
+        }
+        if (!kv.hasData()) kv.set('planpad.demoDone', '1');     // eigener Start: keine Demoklasse automatisch laden
         await setup();
         startAutoLock();
     }
@@ -758,6 +794,8 @@ const lock = (() => {
         lockNow,
         settings,
         enabled: () => Boolean(meta),
+        isDemo: () => demo,
+        leaveDemo,
         faceAad: key => 'face:' + JSON.stringify(key),
         beforeLock: null
     };
