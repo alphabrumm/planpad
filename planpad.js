@@ -17,6 +17,7 @@
 const kv = (() => {
     const PREFIX = 'planpad.';
     const MOVED = 'planpad.__movedAt';
+    const META = '__lock';      // Schlüssel-Hüllen der Sperre (planpad-lock.js), nie im Cache
     // Hell/Dunkel und Akzentfarbe zusätzlich im localStorage: index.html liest sie vor dem Start (kein Aufblitzen)
     const LS_KEEP = new Set(['planpad.theme', 'planpad.accent']);
     const cache = new Map();
@@ -62,6 +63,24 @@ const kv = (() => {
             tx.onabort = () => reject(tx.error || new Error('abgebrochen'));
         });
     }
+    function getOne(k) {
+        return new Promise((resolve, reject) => {
+            const req = db.transaction('kv', 'readonly').objectStore('kv').get(k);
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+        });
+    }
+    /** mit Sperre: jeden Wert einzeln verschlüsseln (Name des Eintrags als Zusatzdaten) */
+    async function sealEntries(entries) {
+        if (!vault.active()) return entries;
+        const out = [];
+        for (const [k, v] of entries) out.push([k, v === null ? null : await vault.seal(v, k)]);
+        return out;
+    }
+    async function plain(k, v) {
+        if (vault.isSealed(v)) return vault.active() ? vault.open(v, k) : undefined;
+        return typeof v === 'string' ? v : undefined;
+    }
     function lsKeys() {
         const out = [];
         try {
@@ -80,10 +99,19 @@ const kv = (() => {
     }
     async function init() {
         try {
-            db = await openDb();
-            if (mirror) { useLocalStorage(); mode = 'mirror'; db = await openDb(); return; }
+            db = db || await openDb();
+            if (mirror && !vault.active()) { useLocalStorage(); mode = 'mirror'; db = await openDb(); return; }
             const stored = await readAll();
-            stored.forEach((v, k) => cache.set(k, v));
+            stored.delete(META);
+            const reseal = [];
+            for (const [k, v] of stored) {
+                let p;
+                try { p = await plain(k, v); } catch (err) { console.error('Eintrag nicht lesbar:', k, err); continue; }
+                if (p === undefined) continue;
+                cache.set(k, p);
+                if (vault.active() && !vault.isSealed(v)) reseal.push([k, p]);
+            }
+            if (reseal.length) await putMany(await sealEntries(reseal));   // Reste aus der Zeit vor der Sperre
             const now = Date.now();
             if (!cache.has(MOVED)) {
                 // erste Übernahme: alles aus localStorage kopieren, was in der IndexedDB noch fehlt
@@ -93,18 +121,23 @@ const kv = (() => {
                     try { v = localStorage.getItem(k); } catch { /* egal */ }
                     if (v !== null && !cache.has(k)) imp.push([k, v]);
                 });
-                if (imp.length) await putMany(imp);
+                if (imp.length) await putMany(await sealEntries(imp));
                 const check = await readAll();
-                if (imp.some(([k, v]) => check.get(k) !== v)) throw new Error('Übernahme unvollständig');
+                for (const [k, v] of imp) if (await plain(k, check.get(k)) !== v) throw new Error('Übernahme unvollständig');
                 imp.forEach(([k, v]) => cache.set(k, v));
                 cache.set(MOVED, String(now));
                 await putMany([[MOVED, String(now)]]);
+            }
+            if (vault.active()) {
+                // verschlüsselt und geprüft: Klartext-Kopien im localStorage sofort entfernen
+                lsKeys().forEach(k => { if (cache.has(k) && !LS_KEEP.has(k)) { try { localStorage.removeItem(k); } catch { /* egal */ } } });
             } else if (now - Number(cache.get(MOVED)) > 864e5) {
                 // einen Tag später: alte Kopien entfernen – nur Einträge, die sicher in der IndexedDB liegen
                 lsKeys().forEach(k => { if (cache.has(k) && !LS_KEEP.has(k)) { try { localStorage.removeItem(k); } catch { /* egal */ } } });
             }
             if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
         } catch (err) {
+            if (vault.active()) throw err;     // mit Sperre nie unverschlüsselt in den localStorage ausweichen
             console.warn('IndexedDB nicht nutzbar – PlanPad speichert weiter im localStorage.', err);
             useLocalStorage();
         }
@@ -119,14 +152,42 @@ const kv = (() => {
             if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v);
         }
         if (db) {
-            queue = queue.then(() => putMany([[k, v]])).catch(err => {
+            queue = queue.then(async () => putMany(await sealEntries([[k, v]]))).catch(err => {
                 console.error(err);
                 errorHandlers.forEach(h => { try { h(err); } catch { /* egal */ } });
             });
         }
     }
+    /** Sperre einrichten: alles verschlüsseln, nachlesen, dann Klartext-Kopien entfernen */
+    async function sealAll() {
+        await queue;
+        const entries = [...cache.entries()];
+        await putMany(await sealEntries(entries));
+        const check = await readAll();
+        for (const [k, v] of entries) {
+            const r = check.get(k);
+            if (!vault.isSealed(r) || await vault.open(r, k) !== v) throw new Error('Verschlüsselung unvollständig: ' + k);
+        }
+        mode = 'idb';
+        lsKeys().forEach(k => { if (cache.has(k) && !LS_KEEP.has(k)) { try { localStorage.removeItem(k); } catch { /* egal */ } } });
+    }
+    async function readMeta() {
+        try {
+            db = db || await openDb();
+            const m = await getOne(META);
+            return m && typeof m === 'object' ? m : null;
+        } catch { return null; }
+    }
+    async function saveMeta(m) {
+        db = db || await openDb();
+        await putMany([[META, m]]);
+    }
     return {
         init,
+        readMeta,
+        saveMeta,
+        sealAll,
+        close: () => { if (db) { db.close(); db = null; } },
         get: k => (cache.has(k) ? cache.get(k) : null),
         set: (k, v) => write(k, String(v)),
         remove: k => { write(k, null); try { localStorage.removeItem(k); } catch { /* egal */ } },
@@ -137,12 +198,12 @@ const kv = (() => {
 })();
 
 document.addEventListener('DOMContentLoaded', async () => {
-    await kv.init();
+    await lock.gate();
 
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.41.1';
+    const VERSION = '1.42.0';
     let kvWarned = false;
     kv.onError(() => {
         if (kvWarned) return;
@@ -195,6 +256,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     </svg>`;
     const ICONS = {
         menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+        lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+        key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/>',
         undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
         redo: '<path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/>',
         plus: '<path d="M12 5v14M5 12h14"/>',
@@ -4797,24 +4860,41 @@ document.addEventListener('DOMContentLoaded', async () => {
                 tx.onerror = () => reject(tx.error);
             });
         }
+        // Schreibvorgänge nacheinander (Verschlüsseln ist asynchron, die Reihenfolge muss bleiben)
+        let chain = Promise.resolve();
+        const queued = fn => { const p = chain.then(fn); chain = p.catch(() => {}); return p; };
         return {
             async loadAll() {
                 const keys = await run('readonly', s => s.getAllKeys());
                 const values = await run('readonly', s => s.getAll());
-                return keys.map((k, i) => [k, values[i]]);
+                const out = [];
+                for (let i = 0; i < keys.length; i++) {
+                    let v = values[i];
+                    if (vault.isSealed(v)) {
+                        if (!vault.active()) continue;
+                        try { v = await vault.open(v, lock.faceAad(keys[i])); } catch (err) { console.error('Foto nicht lesbar', err); continue; }
+                    }
+                    if (typeof v === 'string') out.push([keys[i], v]);
+                }
+                return out;
             },
-            put: (key, url) => run('readwrite', s => s.put(url, key)),
-            remove: key => run('readwrite', s => s.delete(key)),
-            clear: () => run('readwrite', s => s.clear()),
+            put: (key, url) => queued(async () => {
+                const v = vault.active() ? await vault.seal(url, lock.faceAad(key)) : url;
+                return run('readwrite', s => s.put(v, key));
+            }),
+            remove: key => queued(() => run('readwrite', s => s.delete(key))),
+            clear: () => queued(() => run('readwrite', s => s.clear())),
+            flush: () => chain,
             /** alle Fotos eines Plans löschen */
             async removePlan(id) {
                 const keys = await run('readonly', s => s.getAllKeys());
                 const mine = keys.filter(k => Array.isArray(k) && k[0] === id);
-                if (mine.length) await run('readwrite', s => { mine.forEach(k => s.delete(k)); return null; });
+                if (mine.length) await queued(() => run('readwrite', s => { mine.forEach(k => s.delete(k)); return null; }));
             }
         };
     })();
 
+    lock.beforeLock = () => faceStore.flush();
     let faceWarned = false;
     function setFace(name, url, planId = currentPlanId) {
         if (!facesByPlan.has(planId)) facesByPlan.set(planId, new Map());
@@ -7288,6 +7368,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         return true;
     }
     on('delete-all-btn', 'click', () => deleteAllData());
+
+    /* ----- Sperre (planpad-lock.js) ----- */
+    {
+        const sec = document.getElementById('security-section');
+        if (sec) sec.hidden = !lock.enabled();
+        on('lock-now-btn', 'click', () => { closeDrawer(); lock.lockNow(); });
+        on('security-btn', 'click', () => { closeDrawer(); lock.settings(); });
+    }
 
     /** Beim ersten Öffnen und danach höchstens einmal pro Woche an Sicherungskopien erinnern */
     const KEY_BACKUP_NOTICE = 'planpad.backupNotice';

@@ -25,7 +25,7 @@
             if (a && a !== "blau") document.documentElement.dataset.accent = a;
         } catch (e) { }
     </script>
-    <link rel="stylesheet" href="planpad.css?v=1.41.1">
+    <link rel="stylesheet" href="planpad.css?v=1.42.0">
 </head>
 
 <body>
@@ -200,6 +200,14 @@
                     <button id="delete-all-btn" class="is-danger"><span data-icon="trash"></span><span>Alle Klassen, Notizen und Fotos löschen …</span></button>
                 </div>
 
+                <div id="security-section" hidden>
+                    <h2>Sicherheit</h2>
+                    <div class="pp-menu-actions">
+                        <button id="lock-now-btn"><span data-icon="lock"></span><span>Jetzt sperren</span></button>
+                        <button id="security-btn"><span data-icon="key"></span><span>PIN, Face ID und Schlüssel …</span></button>
+                    </div>
+                </div>
+
                 <h2>Fotos</h2>
                 <div class="pp-setting-row">
                     <span>Fotos auf den Tischen</span>
@@ -229,16 +237,17 @@
                 <p class="pp-about">PlanPad erstellt Sitzpläne direkt im Browser. Jede Klasse kann mehrere Sitzpläne haben
                     (z. B. „Normal“, „Gruppenarbeit“, „Prüfung“) – Notizen und Fotos gehören zu den SuS und gelten in allen
                     Sitzplänen der Klasse. Alles bleibt ausschließlich auf diesem Gerät – es gibt keinen Server, keine Cloud und keine automatische
-                    Gesichtserkennung. <b>Regelmäßig sichern:</b> „Alle Klassen als Datei sichern“ – PlanPad erinnert einmal pro Woche daran. Fotos und Notizen nur auf Wunsch, optional mit Passwort verschlüsselt.</p>
+                    Gesichtserkennung. Alle Daten sind auf dem Gerät verschlüsselt (AES-256) und durch PIN bzw. Face ID geschützt. <b>Regelmäßig sichern:</b> „Alle Klassen als Datei sichern“ – PlanPad erinnert einmal pro Woche daran. Fotos und Notizen nur auf Wunsch, optional mit Passwort verschlüsselt.</p>
                 <p class="pp-about"><b>Schuljahresende:</b> Alle Klassen, Fotos, Notizen und Sicherungsdateien müssen am Ende des Schuljahres gelöscht werden. PlanPad erinnert einmal pro Schuljahr daran.</p>
                 <p class="pp-about">Tipp fürs iPad: Teilen → „Zum Home-Bildschirm“. Dann läuft PlanPad auch offline,
                     und Safari löscht die gespeicherten Daten nicht nach längerer Nichtnutzung.</p>
-                <p class="pp-version">Version 1.41.1 · Schrift: Atkinson Hyperlegible (SIL OFL)</p>
+                <p class="pp-version">Version 1.42.0 · Schrift: Atkinson Hyperlegible (SIL OFL)</p>
             </div>
         </aside>
     </div>
 
-    <script src="planpad.js?v=1.41.1"></script>
+    <script src="planpad-lock.js?v=1.42.0"></script>
+    <script src="planpad.js?v=1.42.0"></script>
 </body>
 
 </html>

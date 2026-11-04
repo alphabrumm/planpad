@@ -1819,3 +1819,106 @@ button { -webkit-user-select: none; user-select: none; }
 
 .pp-cat-allbox { display: flex; align-items: center; gap: 8px; margin: 4px 0 2px; font-weight: 700; font-size: 15px; }
 .pp-cat-allbox input { width: 20px; height: 20px; }
+
+/* ==========================================================================
+   Sperre (planpad-lock.js): Vollbild über allem, Ziffernfeld ohne Hervorhebung
+   ========================================================================== */
+html.pp-locked, html.pp-locked body { overflow: hidden; }
+.pp-lock {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+}
+.pp-lock-card {
+    width: 100%;
+    max-width: 440px;
+    margin: auto 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: left;
+}
+.pp-lock-logo { width: 56px; height: 56px; align-self: center; border-radius: 14px; }
+.pp-lock h1 { font-size: 24px; margin: 0; text-align: center; line-height: 1.2; }
+.pp-lock h2 { font-size: 15px; margin: 10px 0 0; color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; }
+.pp-lock-text, .pp-lock-hint, .pp-lock-step, .pp-lock-or { margin: 0; line-height: 1.45; font-size: 16px; }
+.pp-lock-hint { font-size: 14.5px; color: var(--ink-2); }
+.pp-lock-step, .pp-lock-or { text-align: center; color: var(--ink-2); font-size: 15px; }
+.pp-lock-list { margin: 0; padding-left: 20px; line-height: 1.5; }
+.pp-lock-warn {
+    border: 2px solid var(--danger);
+    background: var(--danger-soft);
+    color: var(--ink);
+    border-radius: var(--radius-m);
+    padding: 12px 14px;
+    font-size: 15px;
+    line-height: 1.45;
+}
+:root[data-effective="dark"] .pp-lock-warn { background: rgba(210, 54, 61, 0.16); }
+.pp-lock-msg { margin: 0; min-height: 1.4em; text-align: center; font-size: 15px; }
+.pp-lock-msg.is-error { color: var(--danger); font-weight: 700; }
+.pp-lock-msg.is-ok { color: var(--ok); }
+.pp-lock-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; margin-top: 4px; }
+.pp-lock-actions.is-center { justify-content: center; }
+.pp-lock-pk { min-height: 52px; font-size: 17px; width: 100%; }
+.pp-lock-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.pp-lock-links { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pp-textlink {
+    background: none; border: 0; padding: 8px 0; color: var(--accent); font: inherit; font-size: 15px;
+    text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+}
+.pp-lock-field { display: flex; flex-direction: column; gap: 6px; font-size: 15px; }
+.pp-lock-field input {
+    font: inherit; font-size: 18px; letter-spacing: .08em; padding: 10px 12px; min-height: 46px;
+    border: 1px solid var(--line); border-radius: var(--radius-s); background: var(--surface); color: var(--ink);
+    text-transform: uppercase;
+}
+.pp-lock-check { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; line-height: 1.4; }
+.pp-lock-check input { width: 22px; height: 22px; flex: none; margin-top: 1px; }
+.pp-lock-code {
+    min-height: 64px; display: flex; align-items: center; justify-content: center;
+    border: 1px dashed var(--line); border-radius: var(--radius-m); background: var(--surface); padding: 10px;
+}
+.pp-lock-code code {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 19px; font-weight: 700;
+    letter-spacing: .04em; text-align: center; word-break: break-word; line-height: 1.5;
+}
+.pp-lock-auto { align-self: flex-start; }
+
+/* Ziffernfeld: zufällige Anordnung; Tasten leuchten beim Tippen bewusst nicht auf (Beamer) */
+.pp-pin { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.pp-pin-field {
+    width: 100%; max-width: 300px; min-height: 48px; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--line); border-radius: var(--radius-m); background: var(--surface);
+    color: var(--ink-2); font-size: 16px; letter-spacing: .1em; user-select: none; -webkit-user-select: none;
+}
+.pp-pin-field.has-input { color: var(--ink); font-size: 18px; }
+.pp-pin-field.is-pulse { animation: pp-pin-pulse .35s ease-out; }
+@keyframes pp-pin-pulse { 0% { box-shadow: 0 0 0 0 var(--accent-soft); } 100% { box-shadow: 0 0 0 8px transparent; } }
+.pp-pin-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 300px;
+}
+.pp-pin-grid.is-busy { opacity: .5; pointer-events: none; }
+.pp-pin-key {
+    min-height: 60px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+    font: inherit; font-size: 26px; font-weight: 700; cursor: pointer;
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; -webkit-user-select: none;
+}
+.pp-pin-key:active, .pp-pin-key:focus { background: var(--surface); outline: none; transform: none; }
+.pp-pin-key:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pp-pin-key.is-fn { font-size: 15px; font-weight: 400; color: var(--ink-2); }
+.pp-pin-key.is-ok { font-size: 16px; background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.pp-pin-key.is-ok:active, .pp-pin-key.is-ok:focus { background: var(--accent); }
+@media (max-height: 640px) {
+    .pp-pin-key { min-height: 48px; font-size: 22px; }
+    .pp-lock-logo { width: 40px; height: 40px; }
+}

@@ -34,11 +34,34 @@ Touchfreundlicher Sitzplan-Editor für den Unterricht. Gestaltung angelehnt an J
   Kärtchen und Tische zeigen weiter den Vornamen (bei Gleichheit mit Kürzel), das Kärtchen-Popup den vollen Namen.
   Ein CSV/Excel-Import erscheint ebenso kommagetrennt im Textfeld.
 
+## Sperre und Verschlüsselung (ab 1.42.0)
+
+- Beim Start ist PlanPad gesperrt. Beim ersten Start mit 1.42.0 führt eine Einrichtung durch: PIN festlegen,
+  Wiederherstellungsschlüssel sichern (Pflicht: Kontrolle der letzten 4 Zeichen + Bestätigung), optional Passkey.
+- Alle Daten (Datenbank `planpad`, Store `kv`) und alle Gesichtsausschnitte (`sitzplan-fotos`) werden mit einem
+  zufälligen AES-GCM-256-Datenschlüssel verschlüsselt (Web Crypto API, je Eintrag neuer IV, Eintragsname als
+  Zusatzdaten). Der Datenschlüssel liegt nur „eingepackt“ vor:
+  - PIN (6–12 Ziffern, triviale PINs werden abgelehnt): PBKDF2-SHA-256, 600 000 Iterationen, 128-Bit-Salt.
+  - Passkey (Face ID/Touch ID): WebAuthn mit PRF-Erweiterung (iPadOS/iOS 18+), daraus HKDF-SHA-256.
+    Kein Server: der Passkey dient nur als Schlüsselquelle. Ohne PRF-Unterstützung wird nur die PIN genutzt.
+  - Wiederherstellungsschlüssel: 160 Bit Zufall (Crockford-Base32, 8×4 Zeichen), daraus HKDF-SHA-256.
+    Nach Nutzung muss eine neue PIN festgelegt werden.
+- Sperrbildschirm: Ziffern in zufälliger Anordnung (neu gemischt nach jedem Fehlversuch), keine Tasten-Hervorhebung,
+  die Anzeige verrät die PIN-Länge nicht. Nach 5 Fehlversuchen wachsende Wartezeit (30 s … 15 min).
+- Automatisch sperren nach 2/5/10/30 Minuten ohne Bedienung bzw. im Hintergrund (Standard 5). Menü →
+  „Sicherheit“: „Jetzt sperren“ und „PIN, Face ID und Schlüssel …“ (Änderungen nur nach Bestätigung mit PIN/Passkey).
+  Sperren = ausstehende Änderungen schreiben und neu laden, der Schlüssel verlässt damit den Arbeitsspeicher.
+- „Alles vergessen?“ auf dem Sperrbildschirm löscht nach Eingabe von LÖSCHEN alle Daten (Neubeginn).
+- Ohne PIN, Passkey und Wiederherstellungsschlüssel sind die Daten verloren – darauf weist PlanPad deutlich hin.
+- Code: `planpad-lock.js` (`vault`, `lock`); `kv` ver-/entschlüsselt beim Laden und Schreiben.
+- Test-Schalter: `localStorage['planpad.noLock'] = '1'` überspringt nur die *Einrichtung* (wirkt nicht, wenn
+  bereits eine Sperre besteht); `planpad.testAutoLockMs` kann die Auto-Sperre nur verkürzen.
+
 ## Datenschutz
 
 - Alles läuft lokal im Browser: kein Server, keine Cloud, keine automatische Gesichtserkennung.
 - Klassen, Sitzpläne, Notizen und Einstellungen liegen seit 1.41.0 in der IndexedDB des Geräts (Datenbank `planpad`,
-  Store `kv`), Gesichtsausschnitte (200 × 200 px) in der IndexedDB `sitzplan-fotos`.
+  Store `kv`), Gesichtsausschnitte (200 × 200 px) in der IndexedDB `sitzplan-fotos` – seit 1.42.0 verschlüsselt.
 - Übernahme aus älteren Versionen: Beim ersten Start werden alle `planpad.*`-Einträge aus dem `localStorage` in die
   IndexedDB kopiert und nachgelesen (bei Abweichung wird abgebrochen, nichts gelöscht). Die alten Kopien bleiben
   mindestens einen Tag als Sicherheitsnetz liegen und werden danach entfernt – außer `planpad.theme` und
