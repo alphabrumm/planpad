@@ -444,6 +444,7 @@ const lock = (() => {
         vault.setKey(await openPin(pin, false));    // im Betrieb nur ein nicht exportierbarer Schlüssel
         await kv.sealAll();
         await sealFaces();
+        fresh = true;
         closeOverlay();
     }
 
@@ -734,6 +735,7 @@ const lock = (() => {
 
     /* ---------- Willkommen (allererster Start) ---------- */
     let demo = false;
+    let fresh = false;          // Sperre wurde gerade zum ersten Mal eingerichtet
     function welcome() {
         return new Promise(resolve => {
             const card = screen(`${LOGO}<h1>Willkommen bei PlanPad!</h1>
@@ -795,6 +797,7 @@ const lock = (() => {
         settings,
         enabled: () => Boolean(meta),
         isDemo: () => demo,
+        isFresh: () => fresh,
         leaveDemo,
         faceAad: key => 'face:' + JSON.stringify(key),
         beforeLock: null

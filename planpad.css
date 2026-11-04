@@ -1942,3 +1942,15 @@ html.pp-locked, html.pp-locked body { overflow: hidden; }
     background: var(--marker); color: var(--marker-ink); border-radius: 999px; box-shadow: var(--shadow-lg); font-size: 14.5px;
 }
 @media print { .pp-demo-bar { display: none; } }
+
+/* Glühbirne pulsiert (Demo / direkt nach der ersten Einrichtung), bis sie angetippt wird */
+.pp-bulb.is-pulsing { position: relative; animation: pp-bulb-pulse 1.6s ease-in-out infinite; border-radius: 50%; }
+.pp-bulb.is-pulsing .pp-icon { color: var(--warn); }
+@keyframes pp-bulb-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(255, 212, 59, 0.85); transform: scale(1); background: var(--marker-soft); }
+    50%  { box-shadow: 0 0 0 10px rgba(255, 212, 59, 0); transform: scale(1.12); background: var(--marker); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 212, 59, 0); transform: scale(1); background: var(--marker-soft); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .pp-bulb.is-pulsing { animation: none; background: var(--marker); box-shadow: 0 0 0 3px var(--marker-soft); }
+}

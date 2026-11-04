@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.43.0';
+    const VERSION = '1.43.1';
     let kvWarned = false;
     kv.onError(() => {
         if (kvWarned) return;
@@ -1179,6 +1179,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     // Glühbirne: Hinweis + Handbuch
     on('help-bulb', 'click', () => {
+        $('help-bulb').classList.remove('is-pulsing');
         if (tipBox && tipBox.dataset.bulb) { closeTip(); return; }
         const extra = document.createElement('button');
         extra.type = 'button';
@@ -1192,6 +1193,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         showTip($('help-bulb'), { title: 'Hilfe zu jedem Button', text: 'Lege den Finger länger als 1 Sekunde auf einen Button oder ein Auswahlmenü – dann erscheint eine kurze Erklärung.', extra });
         tipBox.dataset.bulb = '1';
     });
+    // Glühbirne pulsiert in der Demo und direkt nach der allerersten Einrichtung – bis sie angetippt wird
+    if (lock.isDemo() || lock.isFresh()) {
+        const bulb = $('help-bulb');
+        if (bulb) {
+            bulb.classList.add('is-pulsing');      // Antippen beendet das Pulsieren (siehe Klick oben)
+        }
+    }
     // langes Drücken
     {
         let timer = null, start = null, target = null, fired = false;

@@ -43,6 +43,8 @@ Touchfreundlicher Sitzplan-Editor für den Unterricht. Gestaltung angelehnt an J
   Hinweis unten rechts „Demo – nichts wird gespeichert“ mit „Jetzt loslegen“ → Rückfrage → Neuladen direkt in
   die Einrichtung (`sessionStorage['planpad.startSetup']`).
 - Direkt loslegen: Einrichtung der Sperre, danach leere App (keine Demoklasse automatisch).
+- Die Glühbirne (Hilfe) pulsiert in der Demo und direkt nach der allerersten Einrichtung, bis sie angetippt wird
+  (`.pp-bulb.is-pulsing`, ab 1.43.1; bei „Bewegung reduzieren“ nur hervorgehoben).
 - Wer schon Daten hat (Update von älteren Versionen), sieht keinen Willkommen-Bildschirm, sondern gleich die Einrichtung.
 
 ## Sperre und Verschlüsselung (ab 1.42.0)
