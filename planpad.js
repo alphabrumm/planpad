@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.43.1';
+    const VERSION = '1.43.2';
     let kvWarned = false;
     kv.onError(() => {
         if (kvWarned) return;
@@ -1209,6 +1209,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (tipBox && !tipBox.contains(e.target)) closeTip();
             const el = e.target.closest && e.target.closest('button, select');
             if (!el || el.closest('.pp-tip') || el.disabled && el.tagName === 'SELECT') return;
+            // Maus/Trackpad auf einem Auswahlmenü: die native Liste (z. B. am Mac) verschluckt das Loslassen –
+            // ohne diese Ausnahme sähe das wie ein Dauerdruck aus und der Hilfe-Tipp käme ungewollt
+            if (el.tagName === 'SELECT' && e.pointerType === 'mouse') { cancel(); return; }
             fired = false;
             target = el;
             start = { x: e.clientX, y: e.clientY };
@@ -1227,6 +1230,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, true);
         document.addEventListener('pointerup', cancel, true);
         document.addEventListener('pointercancel', cancel, true);
+        // Auswahl getroffen, Feld verlassen oder Fenster gewechselt: kein langes Drücken mehr
+        ['change', 'input', 'focusout'].forEach(ev => document.addEventListener(ev, e => { if (target && e.target === target) cancel(); }, true));
+        window.addEventListener('blur', cancel);
         // der Klick nach dem langen Drücken löst den Button NICHT aus
         document.addEventListener('click', e => {
             if (!fired) return;
