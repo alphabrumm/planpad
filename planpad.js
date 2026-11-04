@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.43.2';
+    const VERSION = '1.43.3';
     let kvWarned = false;
     kv.onError(() => {
         if (kvWarned) return;
@@ -1188,7 +1188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         extra.innerHTML = `${icon('book')}<span>Handbuch öffnen</span>`;
         extra.addEventListener('click', () => {
             closeTip();
-            openHelp(notesViewActive() ? Math.max(0, HELP_PAGES.findIndex(p => p.title === 'Notizen-Modus')) : 0);
+            openHelp(0);     // „Handbuch öffnen“ beginnt immer auf der ersten Seite
         });
         showTip($('help-bulb'), { title: 'Hilfe zu jedem Button', text: 'Lege den Finger länger als 1 Sekunde auf einen Button oder ein Auswahlmenü – dann erscheint eine kurze Erklärung.', extra });
         tipBox.dataset.bulb = '1';
