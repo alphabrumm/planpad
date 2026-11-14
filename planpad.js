@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.43.4';
+    const VERSION = '1.43.5';
     let kvWarned = false;
     kv.onError(() => {
         if (kvWarned) return;
@@ -7407,6 +7407,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const KEY_BACKUP_NOTICE = 'planpad.backupNotice';
     const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
     async function backupReminder() {
+        if (lock.isDemo()) return;     // Demo: nichts wird gespeichert – Hinweis erst bei echter Nutzung
         let last = null;
         try { last = kv.get(KEY_BACKUP_NOTICE); } catch { /* egal */ }
         const lastTime = last ? new Date(last).getTime() : NaN;
@@ -7442,7 +7443,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return /iPad|iPhone|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
     }
     async function homeScreenHint() {
-        if (isStandalone() || !isAppleMobile()) return;
+        if (lock.isDemo() || isStandalone() || !isAppleMobile()) return;
         try { if (kv.get(KEY_HOME_HINT)) return; } catch { return; }
         const content = document.createElement('div');
         content.className = 'pp-homehint';
@@ -7465,6 +7466,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     /** Einmal pro Schuljahr (erstes Öffnen nach dem 1. August) an das Löschen erinnern */
     async function privacyReminder() {
+        if (lock.isDemo()) return;
         await facesReady.catch(() => {});
         const boundary = lastAugustFirst();
         let last = null;
