@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.43.3';
+    const VERSION = '1.43.4';
     let kvWarned = false;
     kv.onError(() => {
         if (kvWarned) return;

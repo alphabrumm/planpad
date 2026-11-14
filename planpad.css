@@ -1954,3 +1954,4 @@ html.pp-locked, html.pp-locked body { overflow: hidden; }
 @media (prefers-reduced-motion: reduce) {
     .pp-bulb.is-pulsing { animation: none; background: var(--marker); box-shadow: 0 0 0 3px var(--marker-soft); }
 }
+.pp-setup-demo { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }

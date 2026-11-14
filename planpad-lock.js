@@ -416,7 +416,7 @@ const lock = (() => {
 
     /* ---------- Ersteinrichtung ---------- */
     async function setup() {
-        await new Promise(resolve => {
+        const first = await new Promise(resolve => {
             const card = screen(`${LOGO}<h1>PlanPad schützen</h1>
                 <p class="pp-lock-text">Ab jetzt ist PlanPad beim Start gesperrt und alle Daten (Klassen, Sitzpläne, Notizen, Sterne, Fehlzeiten und Fotos) werden <b>auf diesem Gerät verschlüsselt</b> gespeichert (AES-256).</p>
                 <ul class="pp-lock-list">
@@ -425,9 +425,15 @@ const lock = (() => {
                     <li><b>Wiederherstellungsschlüssel</b> für den Notfall</li>
                 </ul>
                 ${WARN}
-                <div class="pp-lock-actions"><button type="button" class="pp-btn pp-btn-primary" data-act="go">Einrichten</button></div>`);
-            $(card, '[data-act=go]').addEventListener('click', resolve);
+                <div class="pp-lock-actions"><button type="button" class="pp-btn pp-btn-primary" data-act="go">Einrichten</button></div>
+                <div class="pp-welcome-choices pp-setup-demo">
+                    <button type="button" class="pp-welcome-choice" data-act="demo">
+                        <b>PlanPad Demo ansehen</b><span>Erst in Ruhe ausprobieren – ohne PIN, es wird nichts gespeichert. Vorhandene Klassen bleiben unverändert.</span></button>
+                </div>`);
+            $(card, '[data-act=go]').addEventListener('click', () => resolve('go'));
+            $(card, '[data-act=demo]').addEventListener('click', () => resolve('demo'));
         });
+        if (first === 'demo') return 'demo';
         const pin = await choosePin('PIN festlegen', 'Die PIN brauchst du, wenn Face ID nicht verfügbar ist. Wähle keine Zahl, die man leicht errät (Geburtsdatum, Raumnummer …).');
         const busy = screen(`${LOGO}<h1>Einen Moment …</h1><p class="pp-lock-text">Schlüssel werden erzeugt.</p>`);
         void busy;
@@ -752,6 +758,12 @@ const lock = (() => {
             });
         });
     }
+    /** Demo: nichts auf dem Gerät speichern, keine Sperre (vorhandene Daten bleiben unangetastet) */
+    function startDemo() {
+        kv.useMemory();
+        demo = true;
+        closeOverlay();
+    }
     /** Demo beenden: neu laden und direkt die Einrichtung zeigen */
     function leaveDemo() {
         try { sessionStorage.setItem('planpad.startSetup', '1'); } catch { /* egal */ }
@@ -778,16 +790,10 @@ const lock = (() => {
         let skipWelcome = false;
         try { skipWelcome = sessionStorage.getItem('planpad.startSetup') === '1'; sessionStorage.removeItem('planpad.startSetup'); } catch { /* egal */ }
         if (!kv.hasData() && !skipWelcome) {
-            if (await welcome() === 'demo') {
-                // Demo: nichts auf dem Gerät speichern, keine Sperre
-                kv.useMemory();
-                demo = true;
-                closeOverlay();
-                return;
-            }
+            if (await welcome() === 'demo') { startDemo(); return; }
         }
         if (!kv.hasData()) kv.set('planpad.demoDone', '1');     // eigener Start: keine Demoklasse automatisch laden
-        await setup();
+        if (await setup() === 'demo') { startDemo(); return; }
         startAutoLock();
     }
 
