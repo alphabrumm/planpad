@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.43.5';
+    const VERSION = '1.44.0';
     let kvWarned = false;
     kv.onError(() => {
         if (kvWarned) return;
@@ -992,7 +992,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             title: 'Datenschutz & Sicherung', icon: 'info',
             text: 'Alles bleibt auf diesem Gerät: kein Server, keine Cloud, keine automatische Gesichtserkennung.',
             points: [
-                'Regelmäßig sichern: Menü ☰ → „Alle Klassen als Datei sichern“ (mit Notizen oder Fotos am besten mit Passwort).',
+                'Regelmäßig sichern: Menü ☰ → „Alle Klassen als Datei sichern“ (immer verschlüsselt – einlesen mit dem Wiederherstellungsschlüssel).',
                 'Am Ende des Schuljahres alle Klassen, Notizen, Fotos und Sicherungsdateien löschen.',
                 'Tipp fürs iPad: Teilen → „Zum Home-Bildschirm“ – dann läuft PlanPad auch offline.'
             ]
@@ -1088,7 +1088,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         'help-bulb': 'Hilfe: Tipp zum langen Drücken und Handbuch.',
         'undo-btn': 'Letzte Änderung rückgängig machen.',
         'redo-btn': 'Rückgängig gemachte Änderung wiederholen.',
-        'save-btn': 'Diese Klasse als Datei sichern (optional mit Passwort). Der Punkt zeigt: seit der letzten Sicherung geändert.',
+        'save-btn': 'Diese Klasse als verschlüsselte Datei sichern (einlesen mit dem Wiederherstellungsschlüssel). Der Punkt zeigt: seit der letzten Sicherung geändert.',
         'edit-names-btn': 'Namensliste bearbeiten – ein Kind pro Zeile als „Nachname, Vorname“.',
         'names-done-btn': 'Namensliste übernehmen.',
         'toggle-pills': 'Kärtchen aller Kinder ein- oder ausblenden. Kärtchen auf einen Tisch ziehen = Platz zuweisen.',
@@ -1103,7 +1103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         'fix-conflicts': 'Verletzte Regeln automatisch lösen – mit möglichst wenig Umsetzen.',
         'layout-btn': 'Layouts: Tische in Reihen, Paaren, Gruppen, U-Form oder Prüfungsform aufstellen; eigene Vorlagen speichern.',
         'add-square': 'Neuen Tisch in den Raum stellen.',
-        'reminder-btn': 'Erinnerungen dieser Klasse: anzeigen, neue anlegen (beim nächsten Öffnen oder ab einem Datum) und mit „Erledigt“ abhaken. Die Zahl zeigt offene Erinnerungen.',
+        'reminder-btn': 'Erinnerungen: anzeigen, neue anlegen (beim nächsten Öffnen oder ab einem Datum, auf Wunsch global beim Öffnen von PlanPad), mit dem Stift bearbeiten und mit „Erledigt“ abhaken. Die Zahl zeigt offene Erinnerungen.',
         'absent-btn': 'Wer fehlt heute? Tische der fehlenden Kinder antippen. Sie werden grau mit Kreuz. Fehlzeiten stehen beim Kind und in der Statistik.',
         'arrive-btn': 'Kind kommt in den Raum: Tisch antippen. Stand es auf „fehlt“, rechnet PlanPad die Verspätung aus (auf 5 Minuten aufgerundet), sonst nur „zu spät“.',
         'clear-seats': 'Pinsel: Kinder von den Tischen lösen – alle oder einzelne. Ist ein Tisch gewählt, nur diesen.',
@@ -1646,6 +1646,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function refreshSeatLabels() {
         labelMode = sortLabels();
         document.querySelectorAll('.classroom .square').forEach(sq => { if (sq.dataset.student) setSeat(sq, sq.dataset.student); });
+        updateAttend();
     }
 
     function setSeat(sq, name) {
@@ -2334,6 +2335,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     const roomSizer = $('room-sizer');
     const teacherEl = classroom.querySelector('.teacher');
     if (teacherEl) { teacherEl.innerHTML = BOARD_SVG; teacherEl.setAttribute('aria-label', 'Vorne: Pult der Lehrkraft'); teacherEl.setAttribute('role', 'img'); }
+    // links neben dem Pult: „7/21 anwesend“ (heute nicht als fehlend eingetragene SuS)
+    var attendEl = document.createElement('div');   // var: kein Fehler, falls updateAttend früher aufgerufen wird
+    attendEl.className = 'pp-attend';
+    attendEl.setAttribute('role', 'status');
+    attendEl.hidden = true;
+    classroom.appendChild(attendEl);
+    function updateAttend() {
+        if (!attendEl) return;
+        const total = students.length;
+        if (!total || !teacherEl) { attendEl.hidden = true; return; }
+        const t = todayIso();
+        const kids = new Set(students);
+        const missing = new Set(absences.filter(a => a.date === t && !a.to && kids.has(a.name)).map(a => a.name)).size;
+        const present = total - missing;
+        attendEl.innerHTML = `<b>${present}</b>/${total} anwesend`;
+        attendEl.classList.toggle('is-missing', missing > 0);
+        attendEl.setAttribute('aria-label', `${present} von ${total} Schüler:innen anwesend`);
+        attendEl.hidden = false;
+        // neben das Pult setzen; reicht der Platz links nicht, rechts daneben
+        const cx = parseFloat(teacherEl.style.left);
+        const top = parseFloat(teacherEl.style.top);
+        if (!Number.isFinite(cx) || !Number.isFinite(top)) { attendEl.hidden = true; return; }
+        const half = teacherEl.offsetWidth / 2 || 84;
+        const w = attendEl.offsetWidth;
+        const leftSide = cx - half - 14 - w >= 4;
+        attendEl.style.left = `${leftSide ? cx - half - 14 - w : cx + half + 14}px`;
+        attendEl.style.top = `${top + (teacherEl.offsetHeight || 50) / 2}px`;
+    }
+    setInterval(updateAttend, 60000);     // Tageswechsel
     const ZOOM_MIN = 0.4;
     const ZOOM_MAX = 3;
     const FIT_MIN = 0.2;            // Untergrenze beim Einpassen (ganzer Plan immer sichtbar, auch am iPhone)
@@ -2388,6 +2418,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 teacherEl.style.left = teacherEl.style.top = teacherEl.style.bottom = '';
             }
         }
+        updateAttend();
         renderZoom();
     }
 
@@ -2395,8 +2426,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     function fitToContent() {
         const W = roomScroll.clientWidth;
         const H = roomScroll.clientHeight;
-        const b = contentBounds();
+        let b = contentBounds();
         if (!b || !W || !H) { zoom = 1; resizeClassroom(); return; }
+        // Anwesenheitsanzeige links neben dem Pult mit einpassen
+        if (attendEl && !attendEl.hidden && teacherEl) {
+            const cx = (b.minX + b.maxX) / 2, half = teacherEl.offsetWidth / 2 || 84;
+            const pl = cx - half - 14 - attendEl.offsetWidth;
+            if (pl >= 4) { if (pl < b.minX) b = { ...b, minX: pl }; }
+            else b = { ...b, maxX: Math.max(b.maxX, cx + half + 14 + attendEl.offsetWidth) };   // steht dann rechts vom Pult
+        }
         const bw = b.maxX - b.minX + 2 * MARGIN;
         const bh = b.maxY - b.minY + 2 * MARGIN + 70;
         zoom = Math.max(FIT_MIN, Math.min(ZOOM_MAX, W / bw, H / bh));   // Einpassen darf kleiner werden als von Hand
@@ -4371,8 +4409,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return JSON.parse(new TextDecoder().decode(plain));
     }
 
-    const PHOTO_WARNING = 'Die Datei enthält dann Schülerfotos – das sind personenbezogene Daten. Bitte nicht in Clouds, Messengern oder Lernplattformen ablegen und die Datei spätestens am Ende des Schuljahres löschen.';
-
     /** names = null → alle Pläne */
     async function exportPlans(names) {
         saveCurrentPlan();
@@ -4404,38 +4440,33 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (c) { notesByPlan[k] = keep; noteTotal += c; }
         });
 
-        // Dialog: Fotos ja/nein, Passwort optional
+        // Dialog: Fotos/Notizen ja/nein – verschlüsselt wird immer
         let withPhotos = false;
+        let withNotes = false;
         const content = document.createElement('div');
-        if (photoNames.length) {
+        const choice = (label, get, set) => {
             const row = document.createElement('div');
             row.className = 'pp-setting-row';
             row.style.margin = '6px 0 10px';
-            row.innerHTML = `<span>Fotos einschließen (${photoNames.length})</span>`;
+            row.innerHTML = `<span>${label}</span>`;
             const seg = document.createElement('div');
             seg.className = 'pp-segmented pp-segmented-small';
-            const warn = document.createElement('p');
-            warn.className = 'pp-warnbox';
-            warn.textContent = PHOTO_WARNING;
-            warn.hidden = true;
-            const mk = (label, val) => {
+            const mk = (text, val) => {
                 const btn = document.createElement('button');
                 btn.type = 'button';
-                btn.textContent = label;
-                btn.setAttribute('aria-pressed', String(val === withPhotos));
+                btn.textContent = text;
+                btn.setAttribute('aria-pressed', String(val === get()));
                 btn.addEventListener('click', () => {
-                    withPhotos = val;
+                    set(val);
                     seg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === btn)));
-                    warn.hidden = !val;
-                    pwHint.textContent = (val || withNotes) ? 'Bei Fotos oder Notizen dringend empfohlen.' : 'Optional.';
                 });
                 return btn;
             };
             seg.append(mk('Nein', false), mk('Ja', true));
             row.appendChild(seg);
-            content.append(row, warn);
-        }
-        let withNotes = false;
+            content.appendChild(row);
+        };
+        if (photoNames.length) choice(`Fotos einschließen (${photoNames.length})`, () => withPhotos, v => { withPhotos = v; });
         // Sterne und Beobachtungen sind ebenso persönliche Daten: nur zusammen mit den Notizen sichern
         const extraTotal = keys.reduce((t, k) => {
             const pl = plans[k];
@@ -4446,58 +4477,59 @@ document.addEventListener('DOMContentLoaded', async () => {
                 + v.reduce((a, r) => a + Object.values(r || {}).reduce((b, x) => b + (Array.isArray(x) ? x.length : 0), 0), 0);
         }, 0);
         if (noteTotal || extraTotal) {
-            const row = document.createElement('div');
-            row.className = 'pp-setting-row';
-            row.style.margin = '6px 0 10px';
-            row.innerHTML = extraTotal
-                ? `<span>Notizen, Sterne, Beobachtungen, Fehlzeiten und Erinnerungen einschließen (${noteTotal + extraTotal})</span>`
-                : `<span>Notizen einschließen (${noteTotal})</span>`;
-            const seg = document.createElement('div');
-            seg.className = 'pp-segmented pp-segmented-small';
-            const warn = document.createElement('p');
-            warn.className = 'pp-warnbox';
-            warn.textContent = 'Die Datei enthält dann Notizen und Noten zu einzelnen SuS – besonders schützenswerte Daten. Bitte nur verschlüsselt sichern, nicht in Clouds, Messengern oder Lernplattformen ablegen und spätestens am Ende des Schuljahres löschen.';
-            warn.hidden = true;
-            const mk = (label, val) => {
-                const btn = document.createElement('button');
-                btn.type = 'button';
-                btn.textContent = label;
-                btn.setAttribute('aria-pressed', String(val === withNotes));
-                btn.addEventListener('click', () => {
-                    withNotes = val;
-                    seg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === btn)));
-                    warn.hidden = !val;
-                    pwHint.textContent = (val || withPhotos) ? 'Bei Fotos oder Notizen dringend empfohlen.' : 'Optional.';
-                });
-                return btn;
-            };
-            seg.append(mk('Nein', false), mk('Ja', true));
-            row.appendChild(seg);
-            content.append(row, warn);
+            choice(extraTotal
+                ? `Notizen, Sterne, Beobachtungen, Fehlzeiten und Erinnerungen einschließen (${noteTotal + extraTotal})`
+                : `Notizen einschließen (${noteTotal})`, () => withNotes, v => { withNotes = v; });
         }
-        const pwLabel = document.createElement('label');
-        pwLabel.className = 'pp-field';
-        pwLabel.style.marginTop = '8px';
-        pwLabel.textContent = 'Passwort für die Datei';
-        const pw = document.createElement('input');
-        pw.type = 'password';
-        pw.autocomplete = 'new-password';
-        pw.placeholder = canEncrypt ? 'leer lassen = ohne Passwort' : 'in diesem Browser nicht verfügbar';
-        pw.disabled = !canEncrypt;
-        pwLabel.appendChild(pw);
-        const pwHint = document.createElement('p');
-        pwHint.className = 'pp-hint';
-        pwHint.textContent = 'Optional.';
-        content.append(pwLabel, pwHint);
 
-        const go = await sheet({
-            title: keys.length === 1 ? `„${keys[0]}“ als Datei sichern` : `${keys.length} Klassen als Datei sichern`,
-            text: 'Mit Passwort wird die Datei verschlüsselt (AES, direkt auf diesem Gerät). Ohne das Passwort lässt sie sich nicht öffnen – es gibt keine Wiederherstellung.',
-            content,
-            buttons: [{ label: 'Abbrechen', value: false }, { label: 'Sichern', value: true, kind: 'primary' }]
+        // immer verschlüsselt: mit dem Wiederherstellungsschlüssel – oder (Notfall/ohne Sperre) mit gewürfeltem Passwort
+        const hasKey = lock.enabled() && !lock.isDemo();
+        let password = hasKey ? '' : lock.newPassword();
+        const box = document.createElement('div');
+        box.className = 'pp-warnbox pp-export-key';
+        const drawBox = () => {
+            if (!password) {
+                box.innerHTML = '<p><b>Achtung:</b> Die Datei wird verschlüsselt und lässt sich nur mit Deinem <b>Wiederherstellungsschlüssel</b> wieder einlesen (auf diesem Gerät auch ohne). Ohne den Schlüssel ist sie nicht zu öffnen.</p>'
+                    + '<button type="button" class="pp-linkbtn" data-act="pw"><b>Falls Du Deinen Schlüssel nicht mehr kennst: mit neuem Passwort verschlüsseln</b></button>';
+                return;
+            }
+            box.innerHTML = `<p><b>Achtung:</b> Die Datei wird mit diesem <b>Passwort</b> verschlüsselt. ${hasKey ? 'Der Wiederherstellungsschlüssel öffnet sie nicht.' : ''} Notiere es jetzt – ohne das Passwort lässt sich die Datei nicht mehr öffnen.</p>
+                <div class="pp-export-pw"><code>${escapeHtml(password)}</code></div>
+                <div class="pp-export-pwrow">
+                    <button type="button" class="pp-btn pp-btn-small" data-act="copy">Kopieren</button>
+                    <button type="button" class="pp-btn pp-btn-small" data-act="new">Neu würfeln</button>
+                    ${hasKey ? '<button type="button" class="pp-linkbtn" data-act="key"><b>Doch mit Wiederherstellungsschlüssel</b></button>' : ''}
+                </div>
+                <label class="pp-export-check"><input type="checkbox" data-act="noted"> Ich habe das Passwort notiert.</label>`;
+        };
+        box.addEventListener('click', async e => {
+            const b = e.target.closest('[data-act]');
+            if (!b) return;
+            const act = b.dataset.act;
+            if (act === 'pw' || act === 'new') { password = lock.newPassword(); drawBox(); }
+            if (act === 'key') { password = ''; drawBox(); }
+            if (act === 'copy') {
+                try { await navigator.clipboard.writeText(password); showToast('Passwort kopiert – bitte sicher notieren.', 'ok', 2500); }
+                catch { showToast('Kopieren nicht möglich – bitte abschreiben.', 'warn', 2500); }
+            }
         });
-        if (!go) return;
-        const password = pw.value;
+        drawBox();
+        content.appendChild(box);
+
+        for (;;) {
+            const go = await sheet({
+                title: keys.length === 1 ? `„${keys[0]}“ als Datei sichern` : `${keys.length} Klassen als Datei sichern`,
+                content,
+                buttons: [{ label: 'Abbrechen', value: false }, { label: 'Sichern', value: true, kind: 'primary' }]
+            });
+            if (!go) return;
+            const noted = box.querySelector('[data-act=noted]');
+            if (password && noted && !noted.checked) {
+                await ui.alert('Passwort notiert?', 'Bitte bestätige, dass Du das Passwort notiert hast – ohne es lässt sich die Datei nicht öffnen.');
+                continue;
+            }
+            break;
+        }
 
         const out = {};
         keys.forEach(k => {
@@ -4511,14 +4543,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (noteKinds().length > NOTE_KINDS_BASE.length) payload.noteKinds = noteKinds().slice(NOTE_KINDS_BASE.length);
         if (withPhotos) payload.facesByPlan = photosByPlan;
         if (withNotes) payload.notesByPlan = notesByPlan;
+        const globals = readGlobalReminders();
+        if (withNotes && globals.length) payload.globalReminders = globals;
         const base = names && keys.length === 1 ? `planpad_${fileSafe(keys[0])}` : 'planpad_alle-klassen';
-        const filename = `${base}${withPhotos ? '_mit-fotos' : ''}${withNotes ? '_mit-notizen' : ''}${password ? '_verschluesselt' : ''}_${dateStamp()}.json`;
+        const filename = `${base}${withPhotos ? '_mit-fotos' : ''}${withNotes ? '_mit-notizen' : ''}${password ? '_passwort' : ''}_${dateStamp()}.json`;
 
         let file;
         try {
-            file = password
-                ? { app: 'PlanPad', version: 4, exportDate: new Date().toISOString(), encrypted: await encryptPayload(payload, password) }
-                : { app: 'PlanPad', version: 4, exportDate: new Date().toISOString(), ...payload };
+            const encrypted = password ? await encryptPayload(payload, password) : await lock.sealExport(payload);
+            file = { app: 'PlanPad', version: 5, exportDate: new Date().toISOString(), encrypted };
         } catch (err) {
             console.error(err);
             ui.alert('Verschlüsseln fehlgeschlagen', 'Die Datei konnte nicht verschlüsselt werden.');
@@ -4531,7 +4564,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         writePlans(plans);
         renderPlanHeader();
         const what = keys.length === 1 ? `„${keys[0]}“` : `${keys.length} Klassen`;
-        showToast(`${what} als Datei gesichert – ${withPhotos ? `mit ${photoNames.length} Fotos` : 'ohne Fotos'}, ${withNotes ? `mit ${noteTotal} Notizen` : 'ohne Notizen'}${password ? ', verschlüsselt' : ''}.`, 'ok', 4000);
+        showToast(`${what} verschlüsselt gesichert – ${withPhotos ? `mit ${photoNames.length} Fotos` : 'ohne Fotos'}, ${withNotes ? `mit ${noteTotal} Notizen` : 'ohne Notizen'}${password ? ' (mit Passwort)' : ''}.`, 'ok', 4000);
     }
 
     function downloadJSON(data, filename) {
@@ -4576,13 +4609,35 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ui.alert('Verschlüsselte Datei', 'Dieser Browser kann verschlüsselte Dateien nicht öffnen.');
                 return;
             }
-            for (;;) {
-                const password = await ui.prompt('Verschlüsselte Datei', 'Passwort', '', 'Öffnen', 'password');
-                if (password === null) return;
-                try {
-                    data = await decryptPayload(data.encrypted, password);
-                    break;
-                } catch {
+            const enc = data.encrypted;
+            if (enc.kdf === 'planpad-recovery') {
+                // mit dem Wiederherstellungsschlüssel verschlüsselt: auf diesem Gerät direkt, sonst Schlüssel abfragen
+                let opened = null;
+                try { opened = await lock.openExport(enc); } catch { /* anderes Gerät oder neue Einrichtung */ }
+                while (!opened) {
+                    const code = await ui.prompt('Verschlüsselte Datei', 'Wiederherstellungsschlüssel (8 Gruppen à 4 Zeichen) des PlanPad, aus dem die Datei stammt', '', 'Öffnen', 'text');
+                    if (code === null) return;
+                    try { opened = await lock.openExport(enc, code); }
+                    catch (err) {
+                        await ui.alert(err && err.message === 'format' ? 'Schlüssel unvollständig' : 'Falscher Schlüssel',
+                            err && err.message === 'format' ? 'Der Wiederherstellungsschlüssel hat 32 Zeichen (Buchstaben und Ziffern).' : 'Mit diesem Wiederherstellungsschlüssel lässt sich die Datei nicht öffnen.');
+                    }
+                }
+                data = opened;
+            } else {
+                for (;;) {
+                    const password = await ui.prompt('Verschlüsselte Datei', 'Passwort', '', 'Öffnen', 'password');
+                    if (password === null) return;
+                    // gewürfelte Passwörter auch klein, ohne Bindestriche oder mit Leerzeichen akzeptieren
+                    const raw = password.trim();
+                    const norm = raw.toUpperCase().replace(/[^0-9A-Z]/g, '').replace(/O/g, '0').replace(/[IL]/g, '1');
+                    const tries = [raw];
+                    if (norm.length === 24) tries.push(norm.match(/.{4}/g).join('-'));
+                    let ok = false;
+                    for (const t of tries) {
+                        try { data = await decryptPayload(enc, t); ok = true; break; } catch { /* nächster Versuch */ }
+                    }
+                    if (ok) break;
                     await ui.alert('Falsches Passwort', 'Mit diesem Passwort lässt sich die Datei nicht öffnen.');
                 }
             }
@@ -4682,6 +4737,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const mine = catTemplate();
             const add = tplIn.map(normCat).filter(c => c && !['soz'].includes(c.id) && !mine.some(m => m.id === c.id || m.name === c.name));
             if (add.length) writeCatTemplate([...mine, ...add]);
+        }
+        if (Array.isArray(data.globalReminders)) {
+            const have = new Set(globalReminders.map(r => r.id));
+            normReminders(data.globalReminders, true).forEach(r => { if (!have.has(r.id)) globalReminders.push(r); });
+            writeGlobalReminders();
         }
         if (Array.isArray(data.noteKinds)) data.noteKinds.forEach(k => { if (typeof k === 'string' && k.trim()) addNoteKind(k.trim().slice(0, 30)); });
         // eigene Vorlagen übernehmen (ohne doppelte)
@@ -6991,25 +7051,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         return sec;
     }
 
-    /* ----- Erinnerungen je Klasse ----- */
-    function normReminders(v) {
+    /* ----- Erinnerungen: je Klasse oder global (beim Öffnen der App) ----- */
+    function normReminders(v, global = false) {
         const okDay = d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d);
-        return (Array.isArray(v) ? v : []).filter(r => r && String(r.text || '').trim()).map(r => ({
-            id: String(r.id || newId()), text: String(r.text).trim().slice(0, 500),
-            mode: r.mode === 'date' && okDay(r.date) ? 'date' : 'next', date: okDay(r.date) ? r.date : null,
-            created: r.created || new Date(0).toISOString(), done: r.done || null
-        }));
+        return (Array.isArray(v) ? v : []).filter(r => r && String(r.text || '').trim()).map(r => {
+            const o = {
+                id: String(r.id || newId()), text: String(r.text).trim().slice(0, 500),
+                mode: r.mode === 'date' && okDay(r.date) ? 'date' : 'next', date: okDay(r.date) ? r.date : null,
+                created: r.created || new Date(0).toISOString(), done: r.done || null
+            };
+            if (global) o.global = true;
+            return o;
+        });
     }
-    const openReminders = () => reminders.filter(r => !r.done);
+    const KEY_GLOBAL_REM = 'planpad.globalReminders';
+    const appOpenedAt = new Date().toISOString();    // globale Erinnerungen „beim nächsten Öffnen“ = vor dem App-Start angelegt
+    function readGlobalReminders() {
+        try { return normReminders(JSON.parse(kv.get(KEY_GLOBAL_REM) || '[]'), true); } catch { return []; }
+    }
+    let globalReminders = readGlobalReminders();
+    function writeGlobalReminders() {
+        try { kv.set(KEY_GLOBAL_REM, JSON.stringify(globalReminders.map(({ global: _g, ...r }) => r))); } catch { /* egal */ }
+    }
+    /** speichert die Liste, zu der die Erinnerung gehört */
+    function persistReminder(r) {
+        if (r && r.global) writeGlobalReminders();
+        else saveCurrentPlan(true);
+    }
+    const allReminders = () => [...reminders, ...globalReminders];
+    const openReminders = () => allReminders().filter(r => !r.done);
     function reminderDue(r) {
         if (r.done) return false;
-        return r.mode === 'date' ? r.date <= todayIso() : String(r.created) < classOpenedAt;
+        if (r.mode === 'date') return r.date <= todayIso();
+        return String(r.created) < (r.global ? appOpenedAt : classOpenedAt);
     }
     function reminderWhen(r) {
         if (r.done) return `erledigt ${fmtDay(isoDay(new Date(r.done)))}`;
         if (r.mode === 'date') return r.date <= todayIso() ? `fällig seit ${fmtDay(r.date)}` : `ab ${fmtDayLong(r.date)}`;
-        return reminderDue(r) ? 'fällig' : 'beim nächsten Öffnen';
+        if (reminderDue(r)) return 'fällig';
+        return r.global ? 'beim nächsten Öffnen von PlanPad' : 'beim nächsten Öffnen';
     }
+    const globalTag = r => (r.global ? '<span class="pp-rem-tag">Global</span>' : '');
     function renderReminderBadge() {
         const b = $('reminder-btn');
         if (!b) return;
@@ -7018,24 +7100,35 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!n) { if (badge) badge.remove(); b.classList.remove('has-due'); return; }
         if (!badge) { badge = document.createElement('span'); badge.className = 'pp-rem-count'; b.appendChild(badge); }
         badge.textContent = n;
-        b.classList.toggle('has-due', reminders.some(reminderDue));
+        b.classList.toggle('has-due', allReminders().some(reminderDue));
     }
     function setReminderDone(r) {
         r.done = new Date().toISOString();
-        saveCurrentPlan(true);
+        persistReminder(r);
         renderReminderBadge();
     }
-    /** Liste + neue Erinnerung */
-    async function openRemindersDialog() {
+    function editButton(onClick) {
+        const ed = document.createElement('button');
+        ed.type = 'button';
+        ed.className = 'pp-iconbtn pp-rem-edit';
+        ed.setAttribute('aria-label', 'Erinnerung bearbeiten');
+        ed.title = 'Bearbeiten';
+        ed.innerHTML = icon('edit');
+        ed.addEventListener('click', onClick);
+        return ed;
+    }
+    /** Liste + neue Erinnerung (editId: diese Erinnerung gleich zum Bearbeiten öffnen) */
+    async function openRemindersDialog({ editId = null } = {}) {
         const content = document.createElement('div');
         content.className = 'pp-rem';
         const list = document.createElement('div');
         list.className = 'pp-rem-list';
         content.appendChild(list);
+        let editing = null;            // Erinnerung, die gerade bearbeitet wird
         const drawList = () => {
             list.textContent = '';
             const open = openReminders().sort((a, b) => (reminderDue(b) - reminderDue(a)) || String(a.date || '').localeCompare(String(b.date || '')));
-            const done = reminders.filter(r => r.done).sort((a, b) => String(b.done).localeCompare(String(a.done)));
+            const done = allReminders().filter(r => r.done).sort((a, b) => String(b.done).localeCompare(String(a.done)));
             if (!open.length) {
                 const p = document.createElement('p');
                 p.className = 'pp-hint';
@@ -7044,13 +7137,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             open.forEach(r => {
                 const row = document.createElement('div');
-                row.className = 'pp-rem-item' + (reminderDue(r) ? ' is-due' : '');
-                row.innerHTML = `<div class="pp-rem-text"><b>${escapeHtml(r.text)}</b><small>${escapeHtml(reminderWhen(r))}</small></div>`;
+                row.className = 'pp-rem-item' + (reminderDue(r) ? ' is-due' : '') + (editing === r ? ' is-editing' : '');
+                row.innerHTML = `<div class="pp-rem-text"><b>${escapeHtml(r.text)}</b><small>${globalTag(r)}${escapeHtml(reminderWhen(r))}</small></div>`;
+                row.appendChild(editButton(() => startEdit(r)));
                 const ok = document.createElement('button');
                 ok.type = 'button';
                 ok.className = 'pp-btn pp-btn-small';
                 ok.textContent = 'Erledigt';
-                ok.addEventListener('click', () => { setReminderDone(r); drawList(); });
+                ok.addEventListener('click', () => { if (editing === r) resetForm(); setReminderDone(r); drawList(); });
                 row.appendChild(ok);
                 list.appendChild(row);
             });
@@ -7061,14 +7155,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 done.forEach(r => {
                     const row = document.createElement('div');
                     row.className = 'pp-rem-item is-done';
-                    row.innerHTML = `<div class="pp-rem-text"><b>${escapeHtml(r.text)}</b><small>${escapeHtml(reminderWhen(r))}</small></div>`;
+                    row.innerHTML = `<div class="pp-rem-text"><b>${escapeHtml(r.text)}</b><small>${globalTag(r)}${escapeHtml(reminderWhen(r))}</small></div>`;
                     const del = document.createElement('button');
                     del.type = 'button';
                     del.className = 'pp-iconbtn pp-rem-del';
                     del.setAttribute('aria-label', 'Erinnerung löschen');
                     del.title = 'Löschen';
                     del.innerHTML = icon('trash');
-                    del.addEventListener('click', () => { reminders = reminders.filter(x => x.id !== r.id); saveCurrentPlan(true); drawList(); });
+                    del.addEventListener('click', () => {
+                        if (r.global) { globalReminders = globalReminders.filter(x => x.id !== r.id); writeGlobalReminders(); }
+                        else { reminders = reminders.filter(x => x.id !== r.id); saveCurrentPlan(true); }
+                        drawList();
+                    });
                     row.appendChild(del);
                     det.appendChild(row);
                 });
@@ -7076,10 +7174,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 list.appendChild(det);
             }
         };
-        drawList();
         const form = document.createElement('div');
         form.className = 'pp-rem-form';
-        form.innerHTML = '<b class="pp-rem-formtitle">Neue Erinnerung</b>';
+        const title = document.createElement('b');
+        title.className = 'pp-rem-formtitle';
+        form.appendChild(title);
         const ta = document.createElement('textarea');
         ta.rows = 2;
         ta.placeholder = 'z. B. Elternbrief einsammeln, Test zurückgeben …';
@@ -7093,66 +7192,134 @@ document.addEventListener('DOMContentLoaded', async () => {
         date.className = 'pp-rem-date';
         date.value = addDays(todayIso(), 1);
         date.hidden = true;
+        const setMode = val => {
+            mode = val;
+            seg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.mode === val)));
+            date.hidden = mode !== 'date';
+        };
         const mk = (val, label) => {
             const b = document.createElement('button');
             b.type = 'button';
             b.textContent = label;
             b.dataset.mode = val;
             b.setAttribute('aria-pressed', String(val === mode));
-            b.addEventListener('click', () => {
-                mode = val;
-                seg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-                date.hidden = mode !== 'date';
-            });
+            b.addEventListener('click', () => setMode(val));
             seg.appendChild(b);
         };
         mk('next', 'Beim nächsten Öffnen');
         mk('date', 'Ab Datum');
         form.appendChild(seg);
         form.appendChild(date);
+        const glob = document.createElement('label');
+        glob.className = 'pp-rem-global';
+        glob.innerHTML = '<input type="checkbox"> <span><b>Globale Erinnerung</b> – erscheint beim Öffnen von PlanPad, unabhängig von der Klasse</span>';
+        const globBox = glob.querySelector('input');
+        form.appendChild(glob);
+        const actions = document.createElement('div');
+        actions.className = 'pp-rem-actions';
+        const cancel = document.createElement('button');
+        cancel.type = 'button';
+        cancel.className = 'pp-btn pp-rem-cancel';
+        cancel.textContent = 'Abbrechen';
         const add = document.createElement('button');
         add.type = 'button';
         add.className = 'pp-btn pp-btn-primary pp-rem-add';
-        add.innerHTML = `${icon('plus')}<span>Erinnerung speichern</span>`;
+        actions.append(cancel, add);
+        form.appendChild(actions);
+        function resetForm() {
+            editing = null;
+            title.textContent = 'Neue Erinnerung';
+            ta.value = '';
+            setMode('next');
+            date.value = addDays(todayIso(), 1);
+            globBox.checked = false;
+            cancel.hidden = true;
+            add.innerHTML = `${icon('plus')}<span>Erinnerung speichern</span>`;
+        }
+        function startEdit(r) {
+            editing = r;
+            title.textContent = 'Erinnerung bearbeiten';
+            ta.value = r.text;
+            setMode(r.mode);
+            if (r.mode === 'date' && r.date) date.value = r.date;
+            globBox.checked = Boolean(r.global);
+            cancel.hidden = false;
+            add.innerHTML = `${icon('check')}<span>Änderungen speichern</span>`;
+            drawList();
+            form.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            ta.focus();
+        }
+        cancel.addEventListener('click', () => { resetForm(); drawList(); });
         add.addEventListener('click', () => {
             const text = ta.value.trim();
             if (!text) { showToast('Bitte einen Text eingeben.', 'warn', 2000); ta.focus(); return; }
             if (mode === 'date' && !date.value) { showToast('Bitte ein Datum wählen.', 'warn', 2000); return; }
-            reminders.push({ id: newId(), text: text.slice(0, 500), mode, date: mode === 'date' ? date.value : null, created: new Date().toISOString(), done: null });
-            saveCurrentPlan(true);
+            const isGlobal = globBox.checked;
+            const fields = { text: text.slice(0, 500), mode, date: mode === 'date' ? date.value : null };
+            if (editing) {
+                const r = editing;
+                const modeChanged = r.mode !== mode;
+                Object.assign(r, fields);
+                if (modeChanged && mode === 'next') r.created = new Date().toISOString();
+                if (Boolean(r.global) !== isGlobal) {
+                    // zwischen Klasse und global verschieben
+                    if (isGlobal) { reminders = reminders.filter(x => x !== r); r.global = true; globalReminders.push(r); }
+                    else { globalReminders = globalReminders.filter(x => x !== r); delete r.global; reminders.push(r); }
+                    writeGlobalReminders();
+                    saveCurrentPlan(true);
+                } else persistReminder(r);
+                showToast('Erinnerung geändert.', 'ok', 2000);
+            } else {
+                const r = { id: newId(), ...fields, created: new Date().toISOString(), done: null };
+                if (isGlobal) { r.global = true; globalReminders.push(r); writeGlobalReminders(); }
+                else { reminders.push(r); saveCurrentPlan(true); }
+                showToast(mode === 'date' ? `Erinnerung ab ${fmtDay(date.value)} gespeichert.`
+                    : (isGlobal ? 'Erinnerung erscheint beim nächsten Öffnen von PlanPad.' : 'Erinnerung erscheint beim nächsten Öffnen der Klasse.'), 'ok', 2500);
+            }
             renderReminderBadge();
-            ta.value = '';
+            resetForm();
             drawList();
-            showToast(mode === 'date' ? `Erinnerung ab ${fmtDay(date.value)} gespeichert.` : 'Erinnerung erscheint beim nächsten Öffnen der Klasse.', 'ok', 2500);
         });
-        form.appendChild(add);
         content.appendChild(form);
+        resetForm();
+        const toEdit = editId && allReminders().find(r => r.id === editId);
+        if (toEdit) startEdit(toEdit); else drawList();
         await sheet({ title: `Erinnerungen · ${currentName}`, content, className: 'pp-sheet-rem', buttons: [{ label: 'Schließen', value: null }] });
         renderReminderBadge();
     }
     on('reminder-btn', 'click', () => openRemindersDialog());
-    /** beim Öffnen der Klasse: fällige Erinnerungen, bis sie mit „Erledigt“ quittiert sind */
-    async function reminderCheck() {
+    /** beim Öffnen der Klasse: fällige Erinnerungen der Klasse; beim App-Start zusätzlich die globalen */
+    async function reminderCheck(withGlobal = false) {
         renderReminderBadge();
-        const due = reminders.filter(reminderDue);
+        const due = [...reminders.filter(reminderDue), ...(withGlobal === true ? globalReminders.filter(reminderDue) : [])];
         if (!due.length || document.querySelector('.pp-sheet-layer')) return;
         const content = document.createElement('div');
         content.className = 'pp-rem';
         due.forEach(r => {
             const row = document.createElement('div');
             row.className = 'pp-rem-item is-due';
-            row.innerHTML = `<div class="pp-rem-text"><b>${escapeHtml(r.text)}</b><small>${escapeHtml(r.mode === 'date' ? `seit ${fmtDayLong(r.date)}` : 'beim letzten Mal angelegt')}</small></div>`;
+            const draw = () => {
+                row.querySelector('.pp-rem-text').innerHTML = `<b>${escapeHtml(r.text)}</b><small>${globalTag(r)}${escapeHtml(r.mode === 'date' ? `seit ${fmtDayLong(r.date)}` : 'beim letzten Mal angelegt')}</small>`;
+            };
+            row.innerHTML = '<div class="pp-rem-text"></div>';
+            draw();
             const ok = document.createElement('button');
             ok.type = 'button';
             ok.className = 'pp-btn pp-btn-small pp-btn-primary';
             ok.textContent = 'Erledigt';
+            const ed = editButton(async () => {
+                await openRemindersDialog({ editId: r.id });
+                draw();
+                if (r.done) { row.classList.add('is-done'); ok.disabled = true; ok.textContent = '✓ erledigt'; ed.disabled = true; }
+            });
             ok.addEventListener('click', () => {
                 setReminderDone(r);
                 row.classList.add('is-done');
                 ok.disabled = true;
+                ed.disabled = true;
                 ok.textContent = '✓ erledigt';
             });
-            row.appendChild(ok);
+            row.append(ed, ok);
             content.appendChild(row);
         });
         await sheet({
@@ -7376,7 +7543,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         noteForm = null;
         noteStudent = null;
         namesSession = null;
-        try { kv.remove(KEY_PLANS); kv.remove(KEY_CURRENT); kv.remove(KEY_NOTES); kv.remove(KEY_LEARN); } catch { /* egal */ }
+        try { kv.remove(KEY_PLANS); kv.remove(KEY_CURRENT); kv.remove(KEY_NOTES); kv.remove(KEY_LEARN); kv.remove(KEY_GLOBAL_REM); } catch { /* egal */ }
+        globalReminders = [];
         facesByPlan.clear();
         faceStore.clear().catch(console.error);
         clearTimeout(autosaveTimer);
@@ -7423,7 +7591,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             lines: [
                 'Bitte regelmäßig Sicherungskopien anlegen:',
                 'Menü ☰ → „Alle Klassen als Datei sichern“',
-                'Mit Notizen oder Fotos am besten mit Passwort.'
+                'Die Datei ist immer verschlüsselt – einlesen lässt sie sich mit Deinem Wiederherstellungsschlüssel.'
             ],
             buttons
         });
@@ -7550,7 +7718,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         .then(backupReminder).catch(console.error)
         .then(observationCheck).catch(console.error)
-        .then(reminderCheck).catch(console.error);
+        .then(() => reminderCheck(true)).catch(console.error);
     // angefangene Notiz sichern, wenn die App in den Hintergrund geht
     // Beim Schließen / Wechsel in den Hintergrund sofort sichern (Notiz-Entwurf und anstehende Planänderung)
     const flushAll = () => {

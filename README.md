@@ -34,6 +34,22 @@ Touchfreundlicher Sitzplan-Editor für den Unterricht. Gestaltung angelehnt an J
   Kärtchen und Tische zeigen weiter den Vornamen (bei Gleichheit mit Kürzel), das Kärtchen-Popup den vollen Namen.
   Ein CSV/Excel-Import erscheint ebenso kommagetrennt im Textfeld.
 
+## Neu in 1.44.0
+
+- **Anwesenheit:** Links neben dem Pult steht „7/21 anwesend“ (alle SuS der Klasse minus heute als fehlend
+  eingetragene, noch nicht gekommene). Ist links zu wenig Platz, steht die Anzeige rechts vom Pult; beim Einpassen
+  wird sie mit berücksichtigt. Nicht im Druck.
+- **Exporte immer verschlüsselt:** Statt der Passwort-Abfrage wird mit dem Datenschlüssel verschlüsselt; die Datei
+  enthält ihn nur in der Hülle des Wiederherstellungsschlüssels (`encrypted.kdf = 'planpad-recovery'`, Format 5).
+  Auf demselben Gerät öffnet sie sich ohne Eingabe, sonst nur mit dem Wiederherstellungsschlüssel (der beim Export
+  gültige). Rote Meldung im Dialog; fetter Text-Button „Falls Du Deinen Schlüssel nicht mehr kennst: mit neuem
+  Passwort verschlüsseln“ würfelt ein Passwort (120 Bit, 6×4 Zeichen), das vor dem Export als notiert bestätigt
+  werden muss (PBKDF2 wie bisher; beim Einlesen auch klein/ohne Bindestriche). Ohne Sperre (Demo, Test-Schalter)
+  wird immer ein Passwort gewürfelt. Ältere Dateien (unverschlüsselt oder mit eigenem Passwort) lassen sich weiter öffnen.
+- **Erinnerungen:** Stift-Symbol zum Bearbeiten (in der Liste und im Popup); Checkbox „Globale Erinnerung“:
+  gespeichert unter `planpad.globalReminders`, in jeder Klasse in der Liste (Markierung „Global“), als Popup nur
+  beim Öffnen von PlanPad (nicht beim Klassenwechsel). Export mit Notizen nimmt sie mit.
+
 ## Willkommen und Demo (ab 1.43.0)
 
 - Allererster Start (keine Klassen/Notizen gespeichert, keine Sperre): Willkommen-Bildschirm mit

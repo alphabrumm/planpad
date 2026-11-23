@@ -770,6 +770,34 @@ const lock = (() => {
         location.reload();
     }
 
+    /* ---------- Exporte: verschlüsselt mit dem Datenschlüssel, öffnen mit dem Wiederherstellungsschlüssel ----------
+       Die Datei enthält den Datenschlüssel nur in der Hülle des Wiederherstellungsschlüssels (wie auf dem Gerät).
+       Auf diesem Gerät öffnet sie sich ohne Eingabe, anderswo nur mit dem Wiederherstellungsschlüssel. */
+    const b64e = bytes => { let bin = ''; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); return btoa(bin); };
+    const b64d = str => Uint8Array.from(atob(str), c => c.charCodeAt(0));
+    async function sealExport(obj) {
+        if (!meta || !vault.active()) throw new Error('nolock');
+        const rec = await vault.seal(JSON.stringify(obj), 'export');
+        const r = meta.recovery;
+        return { alg: 'AES-GCM-256', kdf: 'planpad-recovery', slot: { salt: b64e(r.salt), iv: b64e(r.iv), w: b64e(r.w) }, iv: b64e(rec.iv), data: b64e(rec.ct) };
+    }
+    /** ohne code: Versuch mit dem Schlüssel dieses Geräts; wirft 'needkey', 'format' oder einen Fehler bei falschem Schlüssel */
+    async function openExport(enc, code) {
+        const rec = { v: 1, iv: b64d(enc.iv), ct: b64d(enc.data) };
+        if (!code) {
+            if (!vault.active()) throw new Error('needkey');
+            try { return JSON.parse(await vault.open(rec, 'export')); } catch { throw new Error('needkey'); }
+        }
+        const secret = fromB32(code);
+        if (!secret) throw new Error('format');
+        const sl = { salt: b64d(enc.slot.salt), iv: b64d(enc.slot.iv), w: b64d(enc.slot.w) };
+        const dek = await unwrap(sl, await kekFromSecret(secret, sl.salt, 'planpad-recovery'), 'recovery', false);
+        const pt = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: rec.iv, additionalData: te.encode('planpad:export') }, dek, rec.ct);
+        return JSON.parse(new TextDecoder().decode(pt));
+    }
+    /** zufälliges Passwort für Exporte (120 Bit, 6 Vierergruppen ohne verwechselbare Zeichen) */
+    const newPassword = () => toB32(rnd(15));
+
     /* ---------- Start ---------- */
     async function gate() {
         const noLock = testFlag('planpad.noLock') === '1';     // vor kv.init lesen (räumt den localStorage auf)
@@ -804,6 +832,9 @@ const lock = (() => {
         enabled: () => Boolean(meta),
         isDemo: () => demo,
         isFresh: () => fresh,
+        sealExport,
+        openExport,
+        newPassword,
         leaveDemo,
         faceAad: key => 'face:' + JSON.stringify(key),
         beforeLock: null

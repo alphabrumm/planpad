@@ -1955,3 +1955,50 @@ html.pp-locked, html.pp-locked body { overflow: hidden; }
     .pp-bulb.is-pulsing { animation: none; background: var(--marker); box-shadow: 0 0 0 3px var(--marker-soft); }
 }
 .pp-setup-demo { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+
+/* Export: immer verschlüsselt – Hinweis zum Wiederherstellungsschlüssel bzw. gewürfeltes Passwort */
+.pp-export-key { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.pp-export-key p { margin: 0; }
+.pp-linkbtn {
+    background: none; border: 0; padding: 4px 0; margin: 0; text-align: left; cursor: pointer;
+    color: inherit; font: inherit; text-decoration: underline; text-underline-offset: 3px;
+}
+.pp-export-pw {
+    background: var(--surface); border: 1px dashed currentColor; border-radius: var(--radius-s);
+    padding: 8px 10px; text-align: center;
+}
+.pp-export-pw code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 18px; font-weight: 700; color: var(--ink); letter-spacing: .04em; word-break: break-word; }
+.pp-export-pwrow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.pp-export-check { display: flex; gap: 8px; align-items: center; color: var(--ink); font-weight: 600; }
+.pp-export-check input { width: 20px; height: 20px; }
+
+/* Erinnerungen: Bearbeiten, global */
+.pp-rem-edit { flex: none; }
+.pp-rem-item .pp-rem-text { flex: 1; min-width: 0; }
+.pp-rem-item.is-editing { outline: 2px solid var(--accent); outline-offset: -2px; }
+.pp-rem-tag {
+    display: inline-block; margin-right: 6px; padding: 0 7px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent); font-size: 11.5px; font-weight: 700; line-height: 1.6;
+}
+.pp-rem-global { display: flex; gap: 8px; align-items: flex-start; font-size: 14.5px; line-height: 1.4; margin: 4px 0; }
+.pp-rem-global input { width: 20px; height: 20px; flex: none; margin-top: 1px; }
+.pp-rem-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+
+/* Anwesenheit neben dem Pult */
+.pp-attend {
+    position: absolute;
+    transform: translateY(-50%);
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    color: var(--ink-2);
+    font-size: 12.5px;
+    white-space: nowrap;
+    pointer-events: none;
+    user-select: none;
+}
+.pp-attend b { color: var(--ink); font-size: 14px; }
+.pp-attend.is-missing b { color: var(--danger); }
+@media print { .pp-attend { display: none !important; } }
+#print-root .pp-attend { display: none !important; }
