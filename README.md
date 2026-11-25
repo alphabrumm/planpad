@@ -26,7 +26,7 @@ Touchfreundlicher Sitzplan-Editor für den Unterricht. Gestaltung angelehnt an J
   fehlen Tische, werden sie im gewählten Layout ergänzt. Neue Klassen öffnen in der Gruppenansicht.
 - **Pinsel / Papierkorb:** mit angewähltem Tisch nur diesen (Kind lösen bzw. Tisch löschen), sonst Auswahl
   „Alle“ oder „Einzelne …“ (mehrere Tische antippen, bestätigen). Immer mit Rückfrage; danach Gruppenansicht.
-- **Klassen-Auswahl**: Klassenname oben links antippen (▾) → scrollbare Liste aller Klassen, Tippen wechselt; dazu „Umbenennen“ und „Klasse anlegen“.
+- **Klassen-Auswahl**: Klassenname oben links antippen (▾) → scrollbare Liste aller Klassen, Tippen wechselt; dazu „Umbenennen“ und „Mit Probe verbinden“ (Klasse anlegen: Menü ☰).
 - **A-B-Schalter** „In Reihenfolge sortiert“: an = Layout „Reihen“ nach Nachnamen (bei CSV-Klassen,
   sonst Listen-Reihenfolge); aus = ursprüngliche Tischpositionen und Plätze exakt zurück.
   Solange der Schalter aktiv ist, zeigen die Tische zweizeilig Nachname (oben) und Vorname (unten).
@@ -34,7 +34,7 @@ Touchfreundlicher Sitzplan-Editor für den Unterricht. Gestaltung angelehnt an J
   Kärtchen und Tische zeigen weiter den Vornamen (bei Gleichheit mit Kürzel), das Kärtchen-Popup den vollen Namen.
   Ein CSV/Excel-Import erscheint ebenso kommagetrennt im Textfeld.
 
-## Neu in 1.45.0: Noten an Probe senden
+## Neu in 1.45.0: Noten an Probe senden (1.45.1: „Klasse anlegen“ nur noch im Menü ☰)
 
 - Klassenmenü (Klassenname oben links ▾) → **„Mit Probe verbinden“**: Verbindungscode aus Probe einfügen
   (Probe → Klasse → „⇄ PlanPad verbinden“). Danach gehen die **Noten** der Klasse an diese Probe-Klasse –

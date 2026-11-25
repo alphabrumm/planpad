@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.45.0';
+    const VERSION = '1.45.1';
     let kvWarned = false;
     kv.onError(() => {
         if (kvWarned) return;
@@ -4095,8 +4095,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             b.addEventListener('click', () => { closeClassMenu(); fn(); });
             foot.appendChild(b);
         };
-        act('edit', 'Umbenennen', renamePlan);
-        act('plus', 'Klasse anlegen', newPlan);
+        act('edit', 'Umbenennen', renamePlan);   // „Klasse anlegen“ steht im Menü ☰
         act('link', readProbe()[currentPlanId] ? 'Probe-Verbindung' : 'Mit Probe verbinden', probeDialog);
         menu.appendChild(foot);
         document.body.appendChild(menu);
