@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.44.0';
+    const VERSION = '1.45.0';
     let kvWarned = false;
     kv.onError(() => {
         if (kvWarned) return;
@@ -992,6 +992,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             title: 'Datenschutz & Sicherung', icon: 'info',
             text: 'Alles bleibt auf diesem Gerät: kein Server, keine Cloud, keine automatische Gesichtserkennung.',
             points: [
+                'Einzige Ausnahme: Verbindest Du eine Klasse mit Probe (Klassenmenü → „Mit Probe verbinden“), gehen ihre Noten mit Notiz, Art und Datum verschlüsselt an Dein Probe-Konto – sonst nichts.',
                 'Regelmäßig sichern: Menü ☰ → „Alle Klassen als Datei sichern“ (immer verschlüsselt – einlesen mit dem Wiederherstellungsschlüssel).',
                 'Am Ende des Schuljahres alle Klassen, Notizen, Fotos und Sicherungsdateien löschen.',
                 'Tipp fürs iPad: Teilen → „Zum Home-Bildschirm“ – dann läuft PlanPad auch offline.'
@@ -3940,6 +3941,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderPlanHeader();
         renderPlanList();
         showToast(`„${name}“ geöffnet.`, 'info', 1800);
+        probeSoon(2500);
     }
 
     function uniqueName(base) {
@@ -4095,6 +4097,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
         act('edit', 'Umbenennen', renamePlan);
         act('plus', 'Klasse anlegen', newPlan);
+        act('link', readProbe()[currentPlanId] ? 'Probe-Verbindung' : 'Mit Probe verbinden', probeDialog);
         menu.appendChild(foot);
         document.body.appendChild(menu);
         const r = btn.getBoundingClientRect();
@@ -5565,7 +5568,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         } catch { return {}; }
     }
     function writeAllNotes(all) {
-        try { kv.set(KEY_NOTES, JSON.stringify(all)); return true; } catch (err) {
+        try { kv.set(KEY_NOTES, JSON.stringify(all)); probeSoon(); return true; } catch (err) {
             console.error(err);
             ui.alert('Notiz nicht gespeichert', 'Der Browserspeicher ist voll oder gesperrt (privates Fenster?).');
             return false;
@@ -5588,6 +5591,105 @@ document.addEventListener('DOMContentLoaded', async () => {
         const i = arr.findIndex(x => x.id === note.id);
         if (i >= 0) arr[i] = note; else arr.push(note);
         return writeAllNotes(all);
+    }
+    /* ==================================================
+       Probe: Noten (mit Notiz, Art, Datum) an die verbundene Probe-Klasse senden
+       Nur in eine Richtung und nur, wenn die Klasse mit einem Code aus Probe verbunden ist.
+       Verschlüsselt wird hier mit dem öffentlichen Schlüssel der Lehrkraft in Probe (ECDH P-256 + AES-GCM,
+       wie Probe selbst); der Server von Probe sieht nur Zeitpunkt und Größe. Gesendet wird immer der ganze
+       aktuelle Stand der Klasse, so kommen auch Änderungen und Löschungen an.
+       Speicher: planpad.probe = { Klassen-ID: { u, t, k, c, since, last, hash, err } }
+       ================================================== */
+    const KEY_PROBE = 'planpad.probe';
+    function readProbe() { try { const v = JSON.parse(kv.get(KEY_PROBE) || '{}'); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch { return {}; } }
+    function writeProbe(v) { try { kv.set(KEY_PROBE, JSON.stringify(v)); } catch (err) { console.warn(err); } }
+    const pB64 = u8 => { let s = ''; const a = new Uint8Array(u8); for (let i = 0; i < a.length; i += 0x8000) s += String.fromCharCode.apply(null, a.subarray(i, i + 0x8000)); return btoa(s); };
+    async function probeSeal(pubB64, data) {
+        const C = crypto.subtle, pub = await C.importKey('spki', Uint8Array.from(atob(pubB64), c => c.charCodeAt(0)), { name: 'ECDH', namedCurve: 'P-256' }, false, []);
+        const eph = await C.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, true, ['deriveKey']);
+        const k = await C.deriveKey({ name: 'ECDH', public: pub }, eph.privateKey, { name: 'AES-GCM', length: 256 }, false, ['encrypt']);
+        const iv = crypto.getRandomValues(new Uint8Array(12)), ct = new Uint8Array(await C.encrypt({ name: 'AES-GCM', iv }, k, new TextEncoder().encode(JSON.stringify(data))));
+        const o = new Uint8Array(12 + ct.length); o.set(iv); o.set(ct, 12);
+        return JSON.stringify({ v: 1, e: pB64(await C.exportKey('spki', eph.publicKey)), d: pB64(o) });
+    }
+    /** Code aus Probe: „PROBE1.“ + Base64url(JSON { v, u: Adresse der Ablage, t: Token, k: öffentlicher Schlüssel, c: Klasse }) */
+    function parseProbeCode(s) {
+        const m = String(s || '').trim().match(/PROBE1\.([A-Za-z0-9_-]+)/); if (!m) return null;
+        try {
+            const b = m[1].replace(/-/g, '+').replace(/_/g, '/');
+            const o = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b + '==='.slice((b.length + 3) % 4)), c => c.charCodeAt(0))));
+            const u = new URL(o.u);
+            if (o.v !== 1 || !(u.protocol === 'https:' || u.hostname === 'localhost') || !/drop\.php$/.test(u.pathname) || !/^[A-Za-z0-9_-]{20,64}$/.test(o.t) || !/^[A-Za-z0-9+/=]{80,200}$/.test(o.k)) return null;
+            return { u: u.href, t: o.t, k: o.k, c: String(o.c || '').slice(0, 60) };
+        } catch { return null; }
+    }
+    const probeDay = ts => { const d = new Date(ts); return Number.isNaN(+d) ? '' : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+    /** nur Noten: je Notiz mit Note Datum, Note, Art, Unterrichtsnotiz und Vor-/Nachname */
+    function probeItems(planId) {
+        const plan = Object.values(readPlans()).find(p => p && p.id === planId) || {};
+        const ln = planId === currentPlanId ? lastNames : (plan.lastNames || {});
+        const first = name => { let n = String(name).replace(/ \(\d+\)$/, ''); const last = ln[name]; const m = last && n.match(/^(.+) (\S+?)\.?$/); if (m && last.toLocaleLowerCase('de').startsWith(m[2].toLocaleLowerCase('de'))) n = m[1]; return n; };
+        const items = [];
+        Object.entries(notesOfPlan(planId)).forEach(([name, arr]) => {
+            if (name === CLASS_KEY) return;
+            (arr || []).forEach(n => { const g = String(n?.grade || '').trim(); if (g) items.push({ id: String(n.id), d: probeDay(n.ts), g, k: String(n.kind || 'Beitrag'), t: String(n.lesson || ''), v: first(name), n: String(ln[name] || '') }); });
+        });
+        return items.sort((a, b) => a.d.localeCompare(b.d) || a.id.localeCompare(b.id));
+    }
+    let probeTimer = null, probeBusy = false;
+    function probeSoon(ms = 4000) { clearTimeout(probeTimer); probeTimer = setTimeout(() => probeSync(currentPlanId).catch(console.warn), ms); }
+    async function probeSync(planId, force = false) {
+        if (!planId || probeBusy) return null;
+        let all; try { all = readProbe(); } catch { return null; }
+        const conn = all[planId]; if (!conn) return null;
+        if (!navigator.onLine && !force) return null;
+        const items = probeItems(planId);
+        const hash = pB64(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(items))));
+        if (!force && hash === conn.hash && !conn.err) return null;
+        probeBusy = true;
+        try {
+            const data_enc = await probeSeal(conn.k, { v: 1, app: 'planpad', at: new Date().toISOString(), c: currentName, items });
+            const r = await fetch(conn.u, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ t: conn.t, data_enc, n: items.length }), cache: 'no-store', credentials: 'omit' });
+            const j = await r.json().catch(() => ({}));
+            const now = readProbe(); if (!now[planId]) return null;
+            if (r.status === 429) { probeSoon(5000); return null; }
+            if (!r.ok || !j.ok) { now[planId].err = j.error || `Fehler ${r.status}`; writeProbe(now); if (force || r.status === 403) showToast(`Probe: ${now[planId].err}`, 'warn', 6000); return false; }
+            Object.assign(now[planId], { last: Date.now(), hash, n: items.length }); delete now[planId].err; writeProbe(now);
+            if (force) showToast(`${countText(items.length, 'Note', 'Noten')} an Probe gesendet.`, 'ok', 2500);
+            return true;
+        } catch (err) {
+            if (force) showToast('Probe nicht erreichbar – PlanPad versucht es später noch einmal.', 'warn', 4000);
+            return false;
+        } finally { probeBusy = false; }
+    }
+    window.addEventListener('online', () => probeSoon(1500));
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') probeSoon(2500); });
+    async function probeDialog() {
+        const all = readProbe(), conn = all[currentPlanId];
+        if (!conn) {
+            const code = await ui.prompt('Mit Probe verbinden', 'Verbindungscode aus Probe (dort in der Klasse: „⇄ PlanPad verbinden“)', '', 'Weiter');
+            if (!code) return;
+            const c = parseProbeCode(code);
+            if (!c) { ui.alert('Code nicht erkannt', 'Bitte den ganzen Code aus Probe einfügen (er beginnt mit „PROBE1.“).'); return; }
+            const n = probeItems(currentPlanId).length;
+            if (!await ui.confirm('Mit Probe verbinden?', `„${currentName}“ schickt dann die Noten an die Probe-Klasse „${c.c}“ – mit Notiz, Art und Datum, sonst nichts (keine anderen Notizen, Fotos, Sitzpläne oder Beobachtungen).
+Verschlüsselt für dein Probe-Konto, nur in eine Richtung. Jetzt ${countText(n, 'Note', 'Noten')}.`, 'Verbinden')) return;
+            const now = readProbe(); now[currentPlanId] = { ...c, since: Date.now() }; writeProbe(now);
+            await probeSync(currentPlanId, true);
+            return;
+        }
+        const when = t => t ? new Date(t).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '–';
+        const v = await sheet({
+            title: 'Verbindung zu Probe', text: `„${currentName}“ → Probe-Klasse „${conn.c}“
+Zuletzt gesendet: ${when(conn.last)}${conn.last ? ` (${countText(conn.n || 0, 'Note', 'Noten')})` : ''}${conn.err ? `
+⚠ ${conn.err}` : ''}
+Neue und geänderte Noten gehen von selbst an Probe, sobald das Gerät online ist.`,
+            buttons: [{ label: 'Trennen', value: 'off', kind: 'danger' }, { label: 'Schließen', value: null }, { label: 'Jetzt senden', value: 'send', kind: 'primary' }]
+        });
+        if (v === 'send') await probeSync(currentPlanId, true);
+        if (v === 'off' && await ui.confirm('Verbindung trennen?', 'PlanPad sendet dann keine Noten mehr an Probe. Was schon in Probe ist, bleibt dort, bis du die Verbindung auch in Probe trennst.', 'Trennen', true)) {
+            const now = readProbe(); delete now[currentPlanId]; writeProbe(now); showToast('Verbindung zu Probe getrennt.', 'info', 2500);
+        }
     }
     function deleteNote(name, id, planId = currentPlanId) {
         const all = readAllNotes();
@@ -7543,7 +7645,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         noteForm = null;
         noteStudent = null;
         namesSession = null;
-        try { kv.remove(KEY_PLANS); kv.remove(KEY_CURRENT); kv.remove(KEY_NOTES); kv.remove(KEY_LEARN); kv.remove(KEY_GLOBAL_REM); } catch { /* egal */ }
+        try { kv.remove(KEY_PLANS); kv.remove(KEY_CURRENT); kv.remove(KEY_NOTES); kv.remove(KEY_LEARN); kv.remove(KEY_GLOBAL_REM); kv.remove(KEY_PROBE); } catch { /* egal */ }
         globalReminders = [];
         facesByPlan.clear();
         faceStore.clear().catch(console.error);

@@ -34,6 +34,21 @@ Touchfreundlicher Sitzplan-Editor für den Unterricht. Gestaltung angelehnt an J
   Kärtchen und Tische zeigen weiter den Vornamen (bei Gleichheit mit Kürzel), das Kärtchen-Popup den vollen Namen.
   Ein CSV/Excel-Import erscheint ebenso kommagetrennt im Textfeld.
 
+## Neu in 1.45.0: Noten an Probe senden
+
+- Klassenmenü (Klassenname oben links ▾) → **„Mit Probe verbinden“**: Verbindungscode aus Probe einfügen
+  (Probe → Klasse → „⇄ PlanPad verbinden“). Danach gehen die **Noten** der Klasse an diese Probe-Klasse –
+  je Note nur Datum, Note, Art und Unterrichtsnotiz mit Vor- und Nachname. Keine anderen Notizen, Fotos,
+  Sitzpläne, Beobachtungen oder Lob/SOL.
+- Verschlüsselt in PlanPad mit dem öffentlichen Schlüssel der Lehrkraft in Probe (ECDH P-256 + AES-GCM, wie in
+  Probe); der Server von Probe sieht nur Zeitpunkt und Größe. Nur in eine Richtung, Probe schickt nichts zurück.
+- Gesendet wird immer der ganze aktuelle Stand der Klasse (so kommen auch Änderungen und Löschungen an):
+  automatisch ein paar Sekunden nach jeder Notiz-Änderung, beim Öffnen der Klasse, beim Zurückkehren in die App
+  und wenn das Gerät wieder online ist – nur, wenn sich etwas geändert hat. „Probe-Verbindung“: Stand, „Jetzt
+  senden“, „Trennen“.
+- Gespeichert (verschlüsselt wie alles andere) unter `planpad.probe` = `{ Klassen-ID: { u, t, k, c, since, last, hash } }`;
+  nicht in Sicherungsdateien. Ohne Verbindung baut PlanPad nie eine Netzverbindung auf (außer zum Laden der App).
+
 ## Neu in 1.44.0
 
 - **Anwesenheit:** Links neben dem Pult steht „7/21 anwesend“ (alle SuS der Klasse minus heute als fehlend
@@ -88,7 +103,7 @@ Touchfreundlicher Sitzplan-Editor für den Unterricht. Gestaltung angelehnt an J
 
 ## Datenschutz
 
-- Alles läuft lokal im Browser: kein Server, keine Cloud, keine automatische Gesichtserkennung.
+- Alles läuft lokal im Browser: kein Server, keine Cloud, keine automatische Gesichtserkennung. Einzige Ausnahme: Noten einer mit Probe verbundenen Klasse (verschlüsselt, siehe 1.45.0).
 - Klassen, Sitzpläne, Notizen und Einstellungen liegen seit 1.41.0 in der IndexedDB des Geräts (Datenbank `planpad`,
   Store `kv`), Gesichtsausschnitte (200 × 200 px) in der IndexedDB `sitzplan-fotos` – seit 1.42.0 verschlüsselt.
 - Übernahme aus älteren Versionen: Beim ersten Start werden alle `planpad.*`-Einträge aus dem `localStorage` in die
