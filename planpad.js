@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.47.2';
+    const VERSION = '1.47.3';
     let kvWarned = false;
     kv.onError(() => {
         if (kvWarned) return;
@@ -698,6 +698,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     lastNames = newLast;
                     if (!dups.length && document.activeElement !== studentInput) studentInput.value = namesText();
                     refreshSeatLabels();
+                    if (clsChanged) resortIfGrouped();
                     renderStudentList();
                     changed();
                     saveCurrentPlan();
@@ -730,10 +731,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             duplicateNames = dups;
             lastNames = newLast;
             Object.keys(pupils).forEach(n => { if (!newSet.has(n)) delete pupils[n]; });
-            applyClassesFromText(newCls, list);
+            const clsChanged2 = applyClassesFromText(newCls, list);
             setStudents(list);
             if (!dups.length && document.activeElement !== studentInput) studentInput.value = namesText();   // einheitlich „Nachname, Vorname“
             refreshSeatLabels();
+            if (clsChanged2) resortIfGrouped();
             renderNotes();
             const kept = oldList.filter(n => !newSet.has(n) && !accepted.some(r => r[0] === n) && hasStudentData(n));
             if (kept.length) {
@@ -2319,7 +2321,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     for (let c = 0; c < count; c++) gpos.push({ x: c * (w + TIGHT), y });
                     y += h + ROW_GAP;
                 });
-                y += Math.round(h * 0.45);          // Abstand zwischen den Gruppen
+                y += Math.round(h * 0.75);          // deutlicher Abstand zwischen den Gruppen (Klassen/Altersstufen)
             });
             return gpos;
         }
@@ -2538,7 +2540,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     classroom.appendChild(sortBarEl);
     sortBarEl.addEventListener('click', e => {
         const b = e.target.closest('button[data-by]');
-        if (b && b.getAttribute('aria-pressed') !== 'true') setOrderKey(b.dataset.by);
+        if (b) setOrderKey(b.dataset.by);           // auch erneut antippen: neu anordnen
     });
     function renderSortBar() {
         if (!sortBarEl) return;
@@ -3364,6 +3366,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         try { applyLayout('rows'); } finally { rowGroups = null; }
         readingOrder().forEach((sq, i) => setSeat(sq, g.order[i] || ''));
         return by;
+    }
+    /** A–B nach Klasse/Alter aktiv und Klassen oder Geburtstage geändert: gleich neu anordnen */
+    function resortIfGrouped() {
+        const st = currentSeating();
+        if (st && st.orderBase && st.orderKey && st.orderKey !== 'name') setOrderKey(st.orderKey);
+        else renderSortBar();
     }
     function setOrderKey(by) {
         const st = currentSeating();
@@ -4733,7 +4741,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderStudentList();
         renderNotes();
         refreshMarks();
-        renderSortBar();
+        resortIfGrouped();
         changed();
         saveCurrentPlan(true);
         resetHistory();
