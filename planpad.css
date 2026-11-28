@@ -482,14 +482,18 @@ button { -webkit-user-select: none; user-select: none; }
 
 .pp-names textarea:focus { border-color: var(--accent); outline: none; }
 
+/* Hinweis oben über die ganze Breite, darunter „Klassenliste einlesen“ und „Fertig“ nebeneinander */
 .pp-names-foot {
     display: flex;
-    align-items: flex-start;
-    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
     margin-top: 6px;
 }
 
-.pp-names-foot .pp-hint { flex: 1; margin: 0; }
+.pp-names-foot .pp-hint { flex: 0 0 100%; margin: 0; }
+.pp-names-foot #reload-list-btn { flex: 1 1 auto; }
+.pp-names-foot #names-done-btn { flex: 0 0 auto; }
 
 .pp-app:not(.is-editing-names) .pp-names { display: none; }
 .pp-app.is-editing-names #edit-names-btn { display: none; }

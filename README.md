@@ -61,7 +61,7 @@ Touchfreundlicher Sitzplan-Editor für den Unterricht. Gestaltung angelehnt an J
   Die Wahl wird je Sitzplan gemerkt (`orderKey`). Nicht beim Präsentieren und nicht im Druck.
 - **Notizen:** Klasse, Alter und Geburtsdatum unter dem Namen (wichtig bei gemischten Kursen).
 - **Namen lernen:** Antwortvorschläge nur mit gleichem Geschlecht (bei zu wenigen mit anderen aufgefüllt).
-- **Klassenliste einlesen …** (bei „Namen bearbeiten“): gleicher Nach- und Vorname bzw. eindeutiger Vorname wird
+- **Klassenliste einlesen** (bei „Namen bearbeiten“): gleicher Nach- und Vorname bzw. eindeutiger Vorname wird
   automatisch zugeordnet; der Rest im Dialog: zusammenführen (Notizen, Foto, Sterne, Fehlzeiten, Platz wandern mit),
   behalten oder entfernen; neue Kinder aus der Liste kommen ohne Platz dazu.
 - **PIN:** normales Ziffernfeld 1–9, Löschen, 0, OK.
