@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.45.1';
+    const VERSION = '1.46.0';
     let kvWarned = false;
     kv.onError(() => {
         if (kvWarned) return;
@@ -266,6 +266,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const ICONS = {
         menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
         lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+        cake: '<path d="M3 21h18"/><path d="M5 21v-7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7"/><path d="M5 16.5c1.4 1 2.8 1 4.2 0s2.8-1 4.2 0 2.8 1 4.2 0"/><path d="M12 12V8.5"/><path d="M12 6.5c1-1 1-2.2 0-3.5-1 1.3-1 2.5 0 3.5z"/>',
         key: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M15 8l2 2"/>',
         undo: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
         redo: '<path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/>',
@@ -497,6 +498,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     let classOpenedAt = new Date().toISOString();   // „beim nächsten Öffnen“ = vor diesem Zeitpunkt angelegt
     let absences = [];              // Fehlzeiten: { id, name, date, from (fehlt seit), to (gekommen), late (Min.) }
     let lastNames = {};             // Name → Nachname (aus der CSV-Liste), für „In Reihenfolge“
+    let pupils = {};                // Name → { cls, sex: 'w'|'m'|'d', birth: 'JJJJ-MM-TT', year } aus der Klassenliste
 
     /* ==================================================
        Namen & Kärtchen
@@ -690,6 +692,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             duplicateNames = dups;
             lastNames = newLast;
+            Object.keys(pupils).forEach(n => { if (!newSet.has(n)) delete pupils[n]; });
             setStudents(list);
             if (!dups.length && document.activeElement !== studentInput) studentInput.value = namesText();   // einheitlich „Nachname, Vorname“
             refreshSeatLabels();
@@ -789,6 +792,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
         });
         if (lastNames[oldName] !== undefined) { lastNames[newName] = lastNames[oldName]; delete lastNames[oldName]; }
+        if (pupils[oldName]) { pupils[newName] = pupils[oldName]; delete pupils[oldName]; }
         observ.periods.forEach(p => { if (p.name === oldName) p.name = newName; });
         absences.forEach(a => { if (a.name === oldName) a.name = newName; });
         if (votes[oldName]) {
@@ -829,6 +833,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function readStudentInput(names) {
         const list = [...new Set(names.map(n => String(n).trim()).filter(Boolean))];
         Object.keys(lastNames).forEach(n => { if (!list.includes(n) || !lastNames[n]) delete lastNames[n]; });
+        Object.keys(pupils).forEach(n => { if (!list.includes(n)) delete pupils[n]; });
         duplicateNames = [];
         students = list;
         studentInput.value = namesText();
@@ -1109,7 +1114,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         'arrive-btn': 'Kind kommt in den Raum: Tisch antippen. Stand es auf „fehlt“, rechnet PlanPad die Verspätung aus (auf 5 Minuten aufgerundet), sonst nur „zu spät“.',
         'clear-seats': 'Pinsel: Kinder von den Tischen lösen – alle oder einzelne. Ist ein Tisch gewählt, nur diesen.',
         'clear-tables': 'Papierkorb: Tische löschen – alle oder einzelne. Ist ein Tisch gewählt, nur diesen.',
-        'distribute': 'A–B: Tische in Reihen nach Nachnamen sortieren, Namen zweizeilig. Nochmal tippen: alles wie vorher.',
+        'distribute': 'A–B: Tische in Reihen nach Nachnamen sortieren, Namen zweizeilig. Mit Daten aus der Klassenliste: rechts neben dem Pult nach Alter oder Klasse sortieren, Alter und Klasse stehen klein auf dem Tisch. Nochmal tippen: alles wie vorher.',
+        'reload-list-btn': 'Klassenliste (Excel/CSV) erneut einlesen: Klasse, Geschlecht und Geburtstag übernehmen, Namen abgleichen. Notizen, Fotos und Sitzplätze bleiben erhalten.',
         'view-groups': 'Gruppen-Ansicht: Namen, Plätze, Mix und Regeln bearbeiten.',
         'view-notes': 'Notizen-Ansicht: Tisch antippen und Notiz, Note und Sterne eintragen.',
         'zoom-out': 'Raum verkleinern.',
@@ -1325,7 +1331,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             current = queue.shift();
             img.src = faces.get(current);
-            const others = mix(students.filter(n => n !== current)).slice(0, Math.min(3, students.length - 1));
+            // nur Namen mit gleichem Geschlecht vorschlagen (reicht das nicht, mit anderen auffüllen)
+            const want = Math.min(3, students.length - 1);
+            const sex = pupilSex(current);
+            const same = sex ? mix(students.filter(n => n !== current && pupilSex(n) === sex)) : [];
+            const rest = mix(students.filter(n => n !== current && !same.includes(n) && (!sex || !pupilSex(n) || pupilSex(n) === sex)));
+            const fill = mix(students.filter(n => n !== current && !same.includes(n) && !rest.includes(n)));
+            const others = [...same, ...rest, ...fill].slice(0, want);
             choicesEl.textContent = '';
             mix([current, ...others]).forEach(name => {
                 const b = document.createElement('button');
@@ -1643,6 +1655,67 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     /** „Vorname Nachname“, wenn der Nachname bekannt ist – sonst der Anzeigename */
     function fullName(name) { return lastNames[name] ? `${firstNameOf(name)} ${lastNames[name]}` : name; }
+
+    /* ----- Stammdaten aus der Klassenliste: Klasse, Geschlecht, Geburtstag ----- */
+    function normPupils(v) {
+        const out = {};
+        if (!v || typeof v !== 'object') return out;
+        Object.entries(v).forEach(([n, p]) => {
+            if (!p || typeof p !== 'object') return;
+            const o = {};
+            if (p.cls) o.cls = String(p.cls).slice(0, 20);
+            if (['w', 'm', 'd'].includes(p.sex)) o.sex = p.sex;
+            if (/^\d{4}-\d{2}-\d{2}$/.test(p.birth || '')) o.birth = p.birth;
+            const y = Number(p.year || (o.birth ? o.birth.slice(0, 4) : 0));
+            if (y > 1900 && y < 2200) o.year = y;
+            if (Object.keys(o).length) out[n] = o;
+        });
+        return out;
+    }
+    // eigene Datums-Helfer (die gemeinsamen stehen weiter unten und sind beim ersten Zeichnen evtl. noch nicht da)
+    const pIso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const pToday = () => pIso(new Date());
+    const pShift = (iso, n) => { const [y, m, d] = iso.split('-').map(Number); return pIso(new Date(y, m - 1, d + n)); };
+    const pLeap = y => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+    /** Alter in Jahren (nur Geburtsjahr: Jahr − Geburtsjahr) */
+    function pupilAge(name, onDay = pToday()) {
+        const p = pupils[name];
+        if (!p) return null;
+        const [ty, tm, td] = onDay.split('-').map(Number);
+        if (p.birth) {
+            const [y, m, d] = p.birth.split('-').map(Number);
+            return ty - y - (tm < m || (tm === m && td < d) ? 1 : 0);
+        }
+        return p.year ? ty - p.year : null;
+    }
+    const pupilClass = name => (pupils[name] && pupils[name].cls) || '';
+    const pupilSex = name => (pupils[name] && pupils[name].sex) || '';
+    function bdayOn(birth, iso) {
+        const md = birth.slice(5), imd = iso.slice(5);
+        return md === imd || (md === '02-29' && imd === '02-28' && !pLeap(Number(iso.slice(0, 4))));
+    }
+    function schoolDaySafe(iso) {
+        try { return isSchoolDay(iso); } catch { const [y, m, d] = iso.split('-').map(Number); const wd = new Date(y, m - 1, d).getDay(); return wd >= 1 && wd <= 5; }
+    }
+    /**
+     * Geburtstag: heute → { kind: 'today' }; lag er seit dem letzten Schultag am Wochenende
+     * oder in den Ferien → { kind: 'past', day } (Torte ausgegraut, am ersten Schultag danach)
+     */
+    function birthdayState(name) {
+        const p = pupils[name];
+        if (!p || !p.birth) return null;
+        const t = pToday();
+        if (bdayOn(p.birth, t)) return { kind: 'today', day: t, age: pupilAge(name, t) };
+        if (!schoolDaySafe(t)) return null;
+        for (let k = 1; k <= 80; k++) {
+            const d = pShift(t, -k);
+            if (schoolDaySafe(d)) break;
+            if (bdayOn(p.birth, d)) return { kind: 'past', day: d, age: pupilAge(name, t) };
+        }
+        return null;
+    }
+    const fmtBirth = iso => { const [y, m, d] = iso.split('-'); return `${d}.${m}.${y}`; };
+    const sexWord = s => ({ w: 'weiblich', m: 'männlich', d: 'divers' })[s] || '';
     let labelMode = false;
     function refreshSeatLabels() {
         labelMode = sortLabels();
@@ -1678,6 +1751,36 @@ document.addEventListener('DOMContentLoaded', async () => {
             eye.title = 'wird gerade beobachtet';
             eye.innerHTML = `<span class="seat-eye-in">${icon('eye')}</span>`;
             sq.appendChild(eye);
+        }
+        // Geburtstag: Torte oben in der Mitte (Auge links, Punkt rechts); ausgegraut, wenn er am Wochenende/in den Ferien war
+        const bday = name ? birthdayState(name) : null;
+        if (bday) {
+            const cake = document.createElement('span');
+            cake.className = 'seat-cake' + (bday.kind === 'past' ? ' is-past' : '');
+            const age = bday.age != null ? ` (${bday.age})` : '';
+            cake.title = bday.kind === 'today' ? `Hat heute Geburtstag${age}` : `Hatte am ${fmtBirth(bday.day).slice(0, 6)} Geburtstag${age}`;
+            cake.innerHTML = icon('cake');
+            sq.appendChild(cake);
+        }
+        // A–B-Ansicht: Alter unten links, Klasse unten rechts
+        const labeled = Boolean(name) && sortLabels() && (pupilAge(name) != null || pupilClass(name));
+        sq.classList.toggle('is-labeled', labeled);
+        if (labeled) {
+            const age = pupilAge(name);
+            if (age != null) {
+                const a = document.createElement('span');
+                a.className = 'seat-age';
+                a.textContent = age;
+                a.title = `${age} Jahre`;
+                sq.appendChild(a);
+            }
+            if (pupilClass(name)) {
+                const c = document.createElement('span');
+                c.className = 'seat-cls';
+                c.textContent = pupilClass(name);
+                c.title = `Klasse ${pupilClass(name)}`;
+                sq.appendChild(c);
+            }
         }
         const today = name ? absenceToday(name) : null;
         sq.classList.toggle('is-absent', Boolean(today && !today.to));
@@ -2161,10 +2264,23 @@ document.addEventListener('DOMContentLoaded', async () => {
         return Array.from({ length: k }, (_, i) => base + (i < extra ? 1 : 0));
     }
 
-    /** Reihen aus Einzeltischen, die direkt aneinanderstehen */
+    /** Reihen aus Einzeltischen, die direkt aneinanderstehen (rowGroups: Gruppen beginnen in neuer Reihe, mit Abstand) */
+    let rowGroups = null;
     function layoutRows(n, { w, h }, avail) {
         const fit = Math.max(1, Math.floor((avail + TIGHT) / (w + TIGHT)));
         const cols = Math.max(1, Math.min(fit, Math.ceil(Math.sqrt(n * 1.5))));
+        if (rowGroups && rowGroups.reduce((a, b) => a + b, 0) === n) {
+            const gpos = [];
+            let y = 0;
+            rowGroups.forEach(g => {
+                splitEvenly(g, Math.ceil(g / cols)).forEach(count => {
+                    for (let c = 0; c < count; c++) gpos.push({ x: c * (w + TIGHT), y });
+                    y += h + ROW_GAP;
+                });
+                y += Math.round(h * 0.45);          // Abstand zwischen den Gruppen
+            });
+            return gpos;
+        }
         const rows = Math.ceil(n / cols);
         const pos = [];
         splitEvenly(n, rows).forEach((count, r) => {
@@ -2345,7 +2461,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function updateAttend() {
         if (!attendEl) return;
         const total = students.length;
-        if (!total || !teacherEl) { attendEl.hidden = true; return; }
+        if (!total || !teacherEl) { attendEl.hidden = true; if (sortBarEl) sortBarEl.hidden = true; return; }
         const t = todayIso();
         const kids = new Set(students);
         const missing = new Set(absences.filter(a => a.date === t && !a.to && kids.has(a.name)).map(a => a.name)).size;
@@ -2360,11 +2476,44 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!Number.isFinite(cx) || !Number.isFinite(top)) { attendEl.hidden = true; return; }
         const half = teacherEl.offsetWidth / 2 || 84;
         const w = attendEl.offsetWidth;
+        const sortW = sortBarEl && !sortBarEl.hidden ? sortBarEl.offsetWidth + 10 : 0;
         const leftSide = cx - half - 14 - w >= 4;
-        attendEl.style.left = `${leftSide ? cx - half - 14 - w : cx + half + 14}px`;
-        attendEl.style.top = `${top + (teacherEl.offsetHeight || 50) / 2}px`;
+        const midY = top + (teacherEl.offsetHeight || 50) / 2;
+        attendEl.style.left = `${leftSide ? cx - half - 14 - w : cx + half + 14 + sortW}px`;
+        attendEl.style.top = `${midY}px`;
+        if (sortW) { sortBarEl.style.left = `${cx + half + 14}px`; sortBarEl.style.top = `${midY}px`; }
     }
-    setInterval(updateAttend, 60000);     // Tageswechsel
+    setInterval(() => { updateAttend(); if (birthdaysChanged()) refreshSeatLabels(); }, 60000);     // Tageswechsel
+    let bdayDay = '';
+    function birthdaysChanged() { const t = pToday(); if (t === bdayDay) return false; bdayDay = t; return true; }
+
+    // A–B-Ansicht: rechts neben dem Pult „Name | Alter | Klasse“
+    var sortBarEl = document.createElement('div');
+    sortBarEl.className = 'pp-sortbar pp-segmented pp-segmented-small';
+    sortBarEl.setAttribute('role', 'group');
+    sortBarEl.setAttribute('aria-label', 'Sortieren nach');
+    sortBarEl.hidden = true;
+    classroom.appendChild(sortBarEl);
+    sortBarEl.addEventListener('click', e => {
+        const b = e.target.closest('button[data-by]');
+        if (b && b.getAttribute('aria-pressed') !== 'true') setOrderKey(b.dataset.by);
+    });
+    function renderSortBar() {
+        if (!sortBarEl) return;
+        const st = currentSeating();
+        const show = Boolean(st && st.orderBase) && (hasAges() || hasClasses());
+        sortBarEl.hidden = !show;
+        if (!show) { updateAttend(); return; }
+        let by = st.orderKey || 'name';
+        if ((by === 'age' && !hasAges()) || (by === 'class' && !hasClasses())) by = 'name';
+        const opts = [['name', 'Name'], ...(hasAges() ? [['age', 'Alter']] : []), ...(hasClasses() ? [['class', 'Klasse']] : [])];
+        const key = opts.map(o => o[0]).join() + '|' + by;
+        if (sortBarEl.dataset.key !== key) {
+            sortBarEl.dataset.key = key;
+            sortBarEl.innerHTML = opts.map(([k, l]) => `<button type="button" data-by="${k}" aria-pressed="${k === by}">${l}</button>`).join('');
+        }
+        updateAttend();
+    }
     const ZOOM_MIN = 0.4;
     const ZOOM_MAX = 3;
     const FIT_MIN = 0.2;            // Untergrenze beim Einpassen (ganzer Plan immer sichtbar, auch am iPhone)
@@ -2420,6 +2569,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         }
         updateAttend();
+        // Anwesenheit/Sortierung neben dem Pult dürfen nicht abgeschnitten werden
+        const ext = [attendEl, sortBarEl].filter(e => e && !e.hidden).reduce((m, e) => Math.max(m, (parseFloat(e.style.left) || 0) + e.offsetWidth + 16), 0);
+        if (ext > w) { classroom.style.width = `${ext}px`; roomSizer.style.width = `${ext * zoom}px`; }
         renderZoom();
     }
 
@@ -2433,8 +2585,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (attendEl && !attendEl.hidden && teacherEl) {
             const cx = (b.minX + b.maxX) / 2, half = teacherEl.offsetWidth / 2 || 84;
             const pl = cx - half - 14 - attendEl.offsetWidth;
-            if (pl >= 4) { if (pl < b.minX) b = { ...b, minX: pl }; }
-            else b = { ...b, maxX: Math.max(b.maxX, cx + half + 14 + attendEl.offsetWidth) };   // steht dann rechts vom Pult
+            const sortW = sortBarEl && !sortBarEl.hidden ? sortBarEl.offsetWidth + 10 : 0;
+            if (pl >= 4) { if (pl < b.minX) b = { ...b, minX: pl }; if (sortW) b = { ...b, maxX: Math.max(b.maxX, cx + half + 14 + sortW) }; }
+            else b = { ...b, maxX: Math.max(b.maxX, cx + half + 14 + sortW + attendEl.offsetWidth) };   // steht dann rechts vom Pult
         }
         const bw = b.maxX - b.minX + 2 * MARGIN;
         const bh = b.maxY - b.minY + 2 * MARGIN + 70;
@@ -3139,6 +3292,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         return students.slice().sort((a, b) =>
             key(a).localeCompare(key(b), 'de', { sensitivity: 'base' }) || a.localeCompare(b, 'de', { sensitivity: 'base' }));
     }
+    /** A–B nach Alter oder Klasse: Reihenfolge und Gruppengrößen (jede Gruppe beginnt in einer neuen Reihe) */
+    function groupedOrder(by) {
+        const base = orderedStudents();
+        const rank = new Map(base.map((n, i) => [n, i]));
+        const gkey = n => (by === 'age' ? (pupilAge(n) != null ? String(pupilAge(n)) : '') : pupilClass(n));
+        const cmpKey = (a, b) => {
+            const ka = gkey(a), kb = gkey(b);
+            if (!ka || !kb) return (!ka) - (!kb);                       // ohne Angabe ans Ende
+            if (by === 'age') return Number(kb) - Number(ka);           // älteste zuerst
+            return ka.localeCompare(kb, 'de', { numeric: true, sensitivity: 'base' });
+        };
+        const birthKey = n => (pupils[n] && (pupils[n].birth || (pupils[n].year ? `${pupils[n].year}-12-31` : ''))) || '9999';
+        const order = base.slice().sort((a, b) => cmpKey(a, b)
+            || (by === 'age' ? birthKey(a).localeCompare(birthKey(b)) : 0)
+            || rank.get(a) - rank.get(b));
+        const sizes = [];
+        order.forEach((n, i) => { if (i && gkey(n) === gkey(order[i - 1])) sizes[sizes.length - 1]++; else sizes.push(1); });
+        return { order, sizes };
+    }
+    const hasAges = () => students.some(n => pupilAge(n) != null);
+    const hasClasses = () => students.some(n => pupilClass(n));
+    /** Tische in Reihen anordnen und in Reihenfolge besetzen (A–B-Ansicht) */
+    function arrangeInOrder(st) {
+        let by = st.orderKey || 'name';
+        if ((by === 'age' && !hasAges()) || (by === 'class' && !hasClasses())) by = 'name';
+        const g = by === 'name' ? { order: orderedStudents(), sizes: null } : groupedOrder(by);
+        rowGroups = g.sizes;
+        try { applyLayout('rows'); } finally { rowGroups = null; }
+        readingOrder().forEach((sq, i) => setSeat(sq, g.order[i] || ''));
+        return by;
+    }
+    function setOrderKey(by) {
+        const st = currentSeating();
+        if (!st || !st.orderBase) return;
+        st.orderKey = by;
+        arrangeInOrder(st);
+        refreshMarks();
+        scheduleResize();
+        changed();
+        renderSortBar();
+        saveCurrentPlan(true);
+        if (fitMode) requestAnimationFrame(fitToContent);
+    }
 
     function renderOrderButton() {
         const b = $('distribute');
@@ -3150,6 +3346,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const label = on ? 'Sortierung aus – ursprüngliche Tische und Plätze wiederherstellen' : 'In Reihenfolge sortieren (an/aus)';
         b.title = label;
         b.setAttribute('aria-label', label);
+        renderSortBar();
     }
 
     /**
@@ -3165,9 +3362,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!needStudents()) return;
         if (selecting) endSelection();
         st.orderBase = { layout: currentLayout, squares: snapshotData().squares };
-        applyLayout('rows');
-        const order = orderedStudents();
-        readingOrder().forEach((sq, i) => setSeat(sq, order[i] || ''));
+        arrangeInOrder(st);
         refreshMarks();
         scheduleResize();
         changed();
@@ -3410,6 +3605,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             couplingGroups: couplingGroups.map(g => [...g]),
             layout: currentLayout,
             lastNames: { ...lastNames },
+            pupils: JSON.parse(JSON.stringify(pupils)),
             squares: squares.map(sq => ({ x: sq.offsetLeft, y: sq.offsetTop, student: sq.dataset.student || '', t: sq.dataset.tid }))
         };
     }
@@ -3424,6 +3620,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         couplingGroups = groupsFrom(data.couplingGroups);
         currentLayout = typeof data.layout === 'string' ? data.layout : '';
         lastNames = data.lastNames && typeof data.lastNames === 'object' ? { ...data.lastNames } : {};
+        pupils = normPupils(data.pupils);
         readStudentInput(Array.isArray(data.students) ? data.students : []);
         const valid = new Set(students);
         const used = new Set();
@@ -3660,7 +3857,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     async function switchSeatingDirect(id, keepNote) {
         const st = seatings.find(x => x.id === id);
         currentSeatingId = id;
-        applyData({ students: [...students], separationGroups, couplingGroups, lastNames, layout: shownOf(st).layout, squares: shownOf(st).squares });
+        applyData({ students: [...students], separationGroups, couplingGroups, lastNames, pupils, layout: shownOf(st).layout, squares: shownOf(st).squares });
         const keep = keepNote && students.includes(keepNote) ? keepNote : null;
         if (keep !== noteStudent) { noteStudent = keep; renderNotes(); }
         refreshMarks();
@@ -3737,7 +3934,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!st) return;
         delete st.work;
         setActiveTable(null);
-        applyData({ students: [...students], separationGroups, couplingGroups, lastNames, layout: st.layout, squares: st.squares });
+        applyData({ students: [...students], separationGroups, couplingGroups, lastNames, pupils, layout: st.layout, squares: st.squares });
         changed();
         saveCurrentPlan(true);
         renderSeatingPicker();
@@ -4158,6 +4355,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const unique = displayNamesOrdered(people);
         const result = unique.slice().sort((a, b) => a.localeCompare(b, 'de', { sensitivity: 'base' }));
         result.lastNames = Object.fromEntries(unique.map((n, i) => [n, people[i].last]).filter(e => e[1]));   // für „In Reihenfolge“
+        result.pupils = normPupils(Object.fromEntries(unique.map((n, i) => [n, people[i].info]).filter(e => e[1])));
         return result;
     }
     /** Anzeigenamen in der Reihenfolge der Personen */
@@ -4278,22 +4476,271 @@ document.addEventListener('DOMContentLoaded', async () => {
         }).filter(r => r.some(Boolean));
     }
 
-    /** Spalten für Nach- und Vorname finden – über eine Kopfzeile (auch unter Titelzeilen), sonst Spalte 1 und 2 */
+    /** Datum aus der Liste: 03.05.2012, 3.5.2012, 2012-05-03 oder Excel-Seriennummer → 'JJJJ-MM-TT' */
+    function parseBirth(v) {
+        const t = String(v || '').trim();
+        if (!t) return '';
+        let y, m, d;
+        let mm = t.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/);
+        if (mm) { d = +mm[1]; m = +mm[2]; y = +mm[3]; if (y < 100) y += y > 30 ? 1900 : 2000; }
+        else if ((mm = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) { y = +mm[1]; m = +mm[2]; d = +mm[3]; }
+        else if (/^\d{4,5}(\.\d+)?$/.test(t) && +t > 3000) {
+            const dt = new Date(Date.UTC(1899, 11, 30) + Math.floor(+t) * 864e5);   // Excel-Datum
+            y = dt.getUTCFullYear(); m = dt.getUTCMonth() + 1; d = dt.getUTCDate();
+        } else return '';
+        const dt = new Date(y, m - 1, d);
+        if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d || y < 1900) return '';
+        return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    }
+    function parseSex(v) {
+        const t = String(v || '').trim().toLowerCase();
+        if (/^(w|weibl|weiblich|f|female|mädchen)\b/.test(t) || t === 'w') return 'w';
+        if (/^(m|männl|männlich|maennlich|male|junge)\b/.test(t) || t === 'm') return 'm';
+        if (/^(d|divers|x)\b/.test(t)) return 'd';
+        return '';
+    }
+    /**
+     * Spalten finden – über eine Kopfzeile (auch unter Titelzeilen), sonst Spalte 1 und 2.
+     * Erkannt werden zusätzlich Klasse, Geschlecht, Geburtsjahr und Geburtsdatum.
+     */
     function peopleFromRows(rows) {
         const isLast = t => /^(nach|familien|schüler)?name$|^nachname|^familienname/i.test(t.trim());
         const isFirst = t => /^(vorname|rufname)/i.test(t.trim());
+        const isCls = t => /^(klasse|kl\.?|lerngruppe)$|^klasse\b/i.test(t.trim());
+        const isSex = t => /^(geschlecht|geschl\.?|m\/w|w\/m|sex)/i.test(t.trim());
+        const isYear = t => /^(geburtsjahr|geb\.?\s*jahr|jahrgang)/i.test(t.trim());
+        const isDate = t => /^(geburtsdatum|geb\.?\s*datum|geburtstag|geboren)/i.test(t.trim());
         let last = 0;
         let first = 1;
+        let cls = -1, sex = -1, year = -1, date = -1;
         let start = 0;
         for (let i = 0; i < Math.min(rows.length, 15); i++) {
             const r = rows[i].map(x => String(x || ''));
             const fi = r.findIndex(isFirst);
             const li = r.findIndex((t, k) => k !== fi && isLast(t));
-            if (fi >= 0 && li >= 0) { first = fi; last = li; start = i + 1; break; }
+            if (fi >= 0 && li >= 0) {
+                first = fi; last = li; start = i + 1;
+                cls = r.findIndex(isCls); sex = r.findIndex(isSex); year = r.findIndex(isYear); date = r.findIndex(isDate);
+                break;
+            }
         }
+        const cell = (r, k) => (k >= 0 ? String(r[k] || '').replace(/\s+/g, ' ').trim() : '');
         return rows.slice(start)
-            .map(r => ({ last: String(r[last] || '').replace(/\s+/g, ' ').trim(), first: String(r[first] || '').replace(/\s+/g, ' ').trim() }))
+            .map(r => {
+                const p = { last: cell(r, last), first: cell(r, first) };
+                const info = {};
+                if (cell(r, cls)) info.cls = cell(r, cls);
+                if (parseSex(cell(r, sex))) info.sex = parseSex(cell(r, sex));
+                const birth = parseBirth(cell(r, date));
+                if (birth) info.birth = birth;
+                const y = Number(cell(r, year));
+                if (y > 1900 && y < 2200) info.year = y;
+                else if (birth) info.year = Number(birth.slice(0, 4));
+                if (Object.keys(info).length) p.info = info;
+                return p;
+            })
             .filter(p => p.first && !isFirst(p.first));
+    }
+
+    const LIST_ACCEPT = '.xlsx,.csv,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    /** Excel-/CSV-Datei → Zeilen (oder null mit Hinweis) */
+    async function readListRows(file) {
+        if (/\.xls$/i.test(file.name)) {
+            ui.alert('Altes Excel-Format', 'Dateien im alten Format .xls kann PlanPad nicht lesen. Bitte in Excel oder Numbers als .xlsx oder .csv speichern.');
+            return null;
+        }
+        try {
+            const buf = await file.arrayBuffer();
+            const head = new Uint8Array(buf.slice(0, 2));
+            return (head[0] === 0x50 && head[1] === 0x4b) ? await parseXLSX(buf) : parseCSV(await readTextFile(file));
+        } catch (err) {
+            console.error(err);
+            ui.alert('Datei nicht lesbar', 'Die Datei konnte nicht gelesen werden. Bitte als .xlsx oder .csv speichern und erneut versuchen.');
+            return null;
+        }
+    }
+
+    /* ----- Bestehende Klasse erneut aus der Klassenliste einlesen (Stammdaten übernehmen, abgleichen) ----- */
+    on('reload-list-btn', 'click', reloadFromList);
+    async function reloadFromList() {
+        await commitNames(true);
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = LIST_ACCEPT;
+        input.addEventListener('change', async () => {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            const rows = await readListRows(file);
+            if (!rows) return;
+            const people = peopleFromRows(rows);
+            if (!people.length) {
+                ui.alert('Keine Namen gefunden', 'In der Datei wurden keine Vornamen gefunden. Bitte prüfe: Spalten „Nachname“ und „Vorname“ – oder ohne Kopfzeile 1. Spalte Nachname, 2. Spalte Vorname.');
+                return;
+            }
+            await mergeClassList(people);
+        });
+        openFilePicker(input);
+    }
+    const lcde = x => String(x || '').toLocaleLowerCase('de').trim();
+    const plainFirst = n => firstNameOf(n).replace(/ \(\d+\)$/, '');
+    const personText = p => (p.last ? `${p.last}, ${p.first}` : p.first) + (p.info && p.info.cls ? ` (${p.info.cls})` : '');
+    /** Abgleich: gleiche Namen automatisch, Unklares per Dialog; Notizen & Co. bleiben erhalten */
+    async function mergeClassList(people) {
+        const P = people.map((p, i) => ({ ...p, i }));
+        const match = new Map();                      // Schüler:in → Person aus der Liste
+        const used = new Set();
+        const take = (n, p) => { match.set(n, p); used.add(p.i); };
+        // 1) Nachname + Vorname gleich
+        students.forEach(n => {
+            if (!lastNames[n]) return;
+            const c = P.filter(p => !used.has(p.i) && lcde(p.last) === lcde(lastNames[n]) && lcde(p.first) === lcde(plainFirst(n)));
+            if (c.length === 1) take(n, c[0]);
+        });
+        // 2) ohne Nachnamen in PlanPad: Vorname eindeutig
+        students.forEach(n => {
+            if (match.has(n) || lastNames[n]) return;
+            const c = P.filter(p => !used.has(p.i) && lcde(p.first) === lcde(plainFirst(n)));
+            if (c.length === 1) take(n, c[0]);
+        });
+        const openKids = students.filter(n => !match.has(n));
+        const openPeople = P.filter(p => !used.has(p.i));
+        const merges = new Map();                     // Schüler:in → Person (zusammengeführt)
+        const removeSet = new Set();
+        let addPeople = openPeople.slice();
+        if (openKids.length || openPeople.length) {
+            const res = await mergeDialog(openKids, openPeople, match.size);
+            if (!res) return;
+            res.merges.forEach((p, n) => merges.set(n, p));
+            res.remove.forEach(n => removeSet.add(n));
+            addPeople = res.add;
+        }
+        // Personen der neuen Gesamtliste → Anzeigenamen (Vorname, bei Gleichheit mit Kürzel)
+        const roster = [];
+        students.forEach(n => {
+            if (removeSet.has(n)) return;
+            const p = match.get(n) || merges.get(n);
+            roster.push({ from: n, first: p ? p.first : plainFirst(n), last: p ? p.last : (lastNames[n] || ''), info: p ? p.info : null, listed: Boolean(p) });
+        });
+        addPeople.forEach(p => roster.push({ from: null, first: p.first, last: p.last, info: p.info, listed: true }));
+        const shown = displayNamesOrdered(roster.map(r => ({ first: r.first, last: r.last })));
+        // umbenennen in zwei Schritten (sonst stoßen Namen aneinander), dann Liste setzen
+        const tmp = roster.map((r, k) => (r.from ? `\u0001tmp${k}` : null));
+        roster.forEach((r, k) => { if (r.from && r.from !== shown[k]) renameStudent(r.from, tmp[k], { silent: true }); else tmp[k] = r.from; });
+        roster.forEach((r, k) => { if (r.from && tmp[k] !== shown[k]) renameStudent(tmp[k], shown[k], { silent: true }); });
+        const removed = students.filter(n => removeSet.has(n));
+        const newLast = {};
+        const newPupils = {};
+        roster.forEach((r, k) => {
+            const n = shown[k];
+            if (r.last) newLast[n] = r.last;
+            if (r.listed) { if (r.info) newPupils[n] = r.info; }
+            else if (pupils[n]) newPupils[n] = pupils[n];
+        });
+        lastNames = newLast;
+        pupils = normPupils(newPupils);
+        setStudents(shown);
+        studentInput.value = namesText();
+        refreshSeatLabels();
+        renderStudentList();
+        renderNotes();
+        refreshMarks();
+        renderSortBar();
+        changed();
+        saveCurrentPlan(true);
+        resetHistory();
+        const nInfo = Object.keys(pupils).length;
+        const added = addPeople.length;
+        showToast(`Klassenliste eingelesen: ${match.size + merges.size} zugeordnet`
+            + (added ? `, ${added} neu (noch ohne Platz)` : '')
+            + (removed.length ? `, ${removed.length} entfernt` : '')
+            + (nInfo ? ` – Stammdaten für ${nInfo} übernommen.` : '.'), 'ok', 5500);
+        if (removed.some(n => hasStudentData(n))) {
+            showToast(`Notizen und Fotos von ${removed.filter(hasStudentData).join(', ')} bleiben gespeichert und erscheinen wieder, wenn der Name erneut eingetragen wird.`, 'info', 6000);
+        }
+    }
+    /** Dialog: nicht eindeutig zugeordnete Kinder zusammenführen, behalten oder entfernen; neue hinzufügen */
+    async function mergeDialog(kids, persons, autoCount) {
+        const content = document.createElement('div');
+        content.className = 'pp-merge';
+        const guess = n => {
+            const f = lcde(plainFirst(n)), l = lcde(lastNames[n]);
+            return persons.find(p => l && lcde(p.last) === l && (lcde(p.first).startsWith(f.slice(0, 2)) || f.startsWith(lcde(p.first).slice(0, 2))))
+                || persons.find(p => lcde(p.first) === f)
+                || persons.find(p => l && lcde(p.last) === l && persons.filter(q => lcde(q.last) === l).length === 1)
+                || null;
+        };
+        const selects = [];
+        if (kids.length) {
+            const h = document.createElement('h3');
+            h.className = 'pp-section';
+            h.textContent = `In PlanPad, aber nicht eindeutig in der Liste (${kids.length})`;
+            content.appendChild(h);
+            kids.forEach(n => {
+                const row = document.createElement('label');
+                row.className = 'pp-merge-row';
+                row.innerHTML = `<b>${escapeHtml(fullName(n))}</b>`;
+                const sel = document.createElement('select');
+                sel.innerHTML = '<option value="keep">behalten (nicht in der Liste)</option><option value="remove">entfernen</option>'
+                    + persons.map(p => `<option value="p${p.i}">= ${escapeHtml(personText(p))}</option>`).join('');
+                const g = guess(n);
+                if (g) sel.value = `p${g.i}`;
+                row.appendChild(sel);
+                content.appendChild(row);
+                selects.push([n, sel]);
+            });
+        }
+        let addBoxes = [];
+        const addWrap = document.createElement('div');
+        const drawAdds = () => {
+            const chosen = new Set(selects.map(([, s]) => s.value).filter(v => v.startsWith('p')));
+            const free = persons.filter(p => !chosen.has(`p${p.i}`));
+            const before = new Map(addBoxes.map(([p, cb]) => [p.i, cb.checked]));
+            addWrap.textContent = '';
+            addBoxes = [];
+            if (!free.length) return;
+            const h = document.createElement('h3');
+            h.className = 'pp-section';
+            h.textContent = `Neu in der Liste (${free.length})`;
+            addWrap.appendChild(h);
+            free.forEach(p => {
+                const row = document.createElement('label');
+                row.className = 'pp-merge-add';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = before.has(p.i) ? before.get(p.i) : true;
+                row.append(cb, document.createTextNode(` ${personText(p)} hinzufügen`));
+                addWrap.appendChild(row);
+                addBoxes.push([p, cb]);
+            });
+        };
+        content.appendChild(addWrap);
+        selects.forEach(([, sel]) => sel.addEventListener('change', () => {
+            // eine Person nur einmal zuordnen
+            const v = sel.value;
+            if (v.startsWith('p')) selects.forEach(([, o]) => { if (o !== sel && o.value === v) o.value = 'keep'; });
+            drawAdds();
+        }));
+        drawAdds();
+        const hint = document.createElement('p');
+        hint.className = 'pp-hint';
+        hint.textContent = 'Zusammenführen übernimmt Notizen, Foto, Sterne, Fehlzeiten und Sitzplatz. „Entfernen“ nimmt das Kind aus der Klasse – seine Notizen bleiben gespeichert.';
+        content.appendChild(hint);
+        const ok = await sheet({
+            title: 'Klassenliste abgleichen',
+            text: `${autoCount} Kinder wurden automatisch zugeordnet. Bitte prüfe den Rest:`,
+            content,
+            className: 'pp-sheet-merge',
+            buttons: [{ label: 'Abbrechen', value: false }, { label: 'Übernehmen', value: true, kind: 'primary' }]
+        });
+        if (!ok) return null;
+        const byId = new Map(persons.map(p => [`p${p.i}`, p]));
+        const merges = new Map();
+        const remove = [];
+        selects.forEach(([n, sel]) => {
+            if (sel.value === 'remove') remove.push(n);
+            else if (byId.has(sel.value)) merges.set(n, byId.get(sel.value));
+        });
+        return { merges, remove, add: addBoxes.filter(([, cb]) => cb.checked).map(([p]) => p) };
     }
 
     async function newPlanFromList() {
@@ -4304,8 +4751,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             text: 'Wähle eine Excel-Liste (.xlsx) oder CSV-Datei mit den Namen der Klasse – z. B. die Klassenliste, die Du im Infoportal bzw. in der Schulverwaltung herunterlädst. Die Datei wird nur hier im Browser gelesen.',
             lines: [
                 'Spalten „Nachname“ und „Vorname“ (bzw. „Rufname“) werden automatisch erkannt.',
-                'Ohne Kopfzeile: 1. Spalte Nachname, 2. Spalte Vorname.',
-                'Alle weiteren Spalten werden ignoriert.'
+                'Außerdem, falls vorhanden: „Klasse“, „Geschlecht“ (W/M), „Geburtsjahr“ und „Geburtsdatum“ (TT.MM.JJJJ).',
+                'Ohne Kopfzeile: 1. Spalte Nachname, 2. Spalte Vorname.'
             ],
             buttons: [{ label: 'Abbrechen', value: false }, { label: 'Liste auswählen', value: true, kind: 'primary' }]
         });
@@ -4313,24 +4760,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const input = document.createElement('input');
         input.type = 'file';
-        input.accept = '.xlsx,.csv,.txt,text/csv,text/plain,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        input.accept = LIST_ACCEPT;
         input.addEventListener('change', async () => {
             const file = input.files && input.files[0];
             if (!file) return;
-            let rows;
-            if (/\.xls$/i.test(file.name)) {
-                ui.alert('Altes Excel-Format', 'Dateien im alten Format .xls kann PlanPad nicht lesen. Bitte in Excel oder Numbers als .xlsx oder .csv speichern.');
-                return;
-            }
-            try {
-                const buf = await file.arrayBuffer();
-                const head = new Uint8Array(buf.slice(0, 2));
-                rows = (head[0] === 0x50 && head[1] === 0x4b) ? await parseXLSX(buf) : parseCSV(await readTextFile(file));
-            } catch (err) {
-                console.error(err);
-                ui.alert('Datei nicht lesbar', 'Die Datei konnte nicht gelesen werden. Bitte als .xlsx oder .csv speichern und erneut versuchen.');
-                return;
-            }
+            const rows = await readListRows(file);
+            if (!rows) return;
             const people = peopleFromRows(rows);
             if (!people.length) {
                 ui.alert('Keine Namen gefunden', 'In der Datei wurden keine Vornamen gefunden. Bitte prüfe: Spalten „Nachname“ und „Vorname“ – oder ohne Kopfzeile 1. Spalte Nachname, 2. Spalte Vorname.');
@@ -4350,7 +4785,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             currentName = name;
             selectPlan(null);
             notesMode = false;           // neue Klasse: Gruppenansicht
-            loadClass({ students: [...names], lastNames: names.lastNames });
+            loadClass({ students: [...names], lastNames: names.lastNames, pupils: names.pupils });
             app.classList.remove('is-editing-names');
             // gleich startklar: Tische anlegen, Zweiertische, einmal mischen
             applyLayout('pairs');
@@ -6183,6 +6618,27 @@ Neue und geänderte Noten gehen von selbst an Probe, sobald das Gerät online is
         const nm = document.createElement('b');
         nm.textContent = fullName(noteStudent);
         who.appendChild(nm);
+        // Stammdaten aus der Klassenliste: Klasse (wichtig bei gemischten Kursen), Alter, Geburtstag
+        const pi = pupils[noteStudent];
+        if (pi) {
+            const meta = document.createElement('span');
+            meta.className = 'pp-note-meta';
+            const bits = [];
+            if (pi.cls) bits.push(`<span class="pp-note-cls">${escapeHtml(pi.cls)}</span>`);
+            const age = pupilAge(noteStudent);
+            if (age != null) bits.push(`${age} J.`);
+            if (pi.birth) bits.push(`geb. ${fmtBirth(pi.birth)}`);
+            else if (pi.year) bits.push(`Jg. ${pi.year}`);
+            meta.innerHTML = bits.join(' · ');
+            const bd = birthdayState(noteStudent);
+            if (bd) meta.insertAdjacentHTML('beforeend', ` <span class="pp-note-bday${bd.kind === 'past' ? ' is-past' : ''}" title="${bd.kind === 'today' ? 'Hat heute Geburtstag' : 'Hatte vor Kurzem Geburtstag'}">${icon('cake')}</span>`);
+            if (bits.length || bd) {
+                const txt = document.createElement('div');
+                txt.className = 'pp-note-whotext';
+                who.replaceChild(txt, nm);
+                txt.append(nm, meta);
+            }
+        }
         if (isObserved(noteStudent)) {
             const eb = document.createElement('button');
             eb.type = 'button';

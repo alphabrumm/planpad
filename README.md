@@ -49,6 +49,23 @@ Touchfreundlicher Sitzplan-Editor für den Unterricht. Gestaltung angelehnt an J
 - Gespeichert (verschlüsselt wie alles andere) unter `planpad.probe` = `{ Klassen-ID: { u, t, k, c, since, last, hash } }`;
   nicht in Sicherungsdateien. Ohne Verbindung baut PlanPad nie eine Netzverbindung auf (außer zum Laden der App).
 
+## Neu in 1.46.0
+
+- **Stammdaten aus der Klassenliste:** Neben Nachname/Vorname werden die Spalten „Klasse“, „Geschlecht“ (W/M),
+  „Geburtsjahr“ und „Geburtsdatum“ (TT.MM.JJJJ, auch Excel-Datum) erkannt und je Kind gespeichert
+  (`pupils` im Plan, verschlüsselt wie alles andere; wandert beim Umbenennen mit).
+- **Torte:** Wer heute Geburtstag hat, bekommt oben mittig auf dem Tisch eine Torte; lag der Geburtstag seit dem
+  letzten Schultag am Wochenende oder in den (bayerischen) Ferien, erscheint sie am ersten Schultag ausgegraut.
+- **A–B-Ansicht:** Alter (unten links) und Klasse (unten rechts) auf jedem Tisch; rechts neben dem Pult
+  „Name | Alter | Klasse“. Bei Alter (älteste zuerst) und Klasse beginnt jede Gruppe in einer neuen Reihe, mit Abstand.
+  Die Wahl wird je Sitzplan gemerkt (`orderKey`). Nicht beim Präsentieren und nicht im Druck.
+- **Notizen:** Klasse, Alter und Geburtsdatum unter dem Namen (wichtig bei gemischten Kursen).
+- **Namen lernen:** Antwortvorschläge nur mit gleichem Geschlecht (bei zu wenigen mit anderen aufgefüllt).
+- **Klassenliste einlesen …** (bei „Namen bearbeiten“): gleicher Nach- und Vorname bzw. eindeutiger Vorname wird
+  automatisch zugeordnet; der Rest im Dialog: zusammenführen (Notizen, Foto, Sterne, Fehlzeiten, Platz wandern mit),
+  behalten oder entfernen; neue Kinder aus der Liste kommen ohne Platz dazu.
+- **PIN:** normales Ziffernfeld 1–9, Löschen, 0, OK.
+
 ## Neu in 1.44.0
 
 - **Anwesenheit:** Links neben dem Pult steht „7/21 anwesend“ (alle SuS der Klasse minus heute als fehlend
@@ -90,7 +107,7 @@ Touchfreundlicher Sitzplan-Editor für den Unterricht. Gestaltung angelehnt an J
     Kein Server: der Passkey dient nur als Schlüsselquelle. Ohne PRF-Unterstützung wird nur die PIN genutzt.
   - Wiederherstellungsschlüssel: 160 Bit Zufall (Crockford-Base32, 8×4 Zeichen), daraus HKDF-SHA-256.
     Nach Nutzung muss eine neue PIN festgelegt werden.
-- Sperrbildschirm: Ziffern in zufälliger Anordnung (neu gemischt nach jedem Fehlversuch), keine Tasten-Hervorhebung,
+- Sperrbildschirm: Ziffern in gewohnter Anordnung (seit 1.46.0; vorher zufällig), keine Tasten-Hervorhebung,
   die Anzeige verrät die PIN-Länge nicht. Nach 5 Fehlversuchen wachsende Wartezeit (30 s … 15 min).
 - Automatisch sperren nach 2/5/10/30 Minuten ohne Bedienung bzw. im Hintergrund (Standard 5). Menü →
   „Sicherheit“: „Jetzt sperren“ und „PIN, Face ID und Schlüssel …“ (Änderungen nur nach Bestätigung mit PIN/Passkey).

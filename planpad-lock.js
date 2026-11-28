@@ -238,7 +238,7 @@ const lock = (() => {
         m.className = 'pp-lock-msg' + (text ? ' is-' + kind : '');
     }
 
-    /** Ziffernfeld: zufällige Anordnung, keine Hervorhebung beim Tippen, verrät die Länge nicht */
+    /** Ziffernfeld: gewohnte Anordnung, keine Hervorhebung beim Tippen, verrät die Länge nicht */
     function pinPad(card, onSubmit, okLabel = 'OK') {
         const host = $(card, '.pp-pin');
         let val = '';
@@ -255,8 +255,8 @@ const lock = (() => {
         };
         const pulse = () => { field.classList.remove('is-pulse'); void field.offsetWidth; field.classList.add('is-pulse'); };
         function layout() {
-            const d = shuffled([...'0123456789']);
-            const keys = [...d.slice(0, 9), 'clear', d[9], 'ok'];
+            // gewohnte Anordnung wie am Telefon: 1 2 3 / 4 5 6 / 7 8 9 / Löschen 0 OK
+            const keys = [...'123456789', 'clear', '0', 'ok'];
             grid.replaceChildren(...keys.map(k => {
                 const b = document.createElement('button');
                 b.type = 'button';
@@ -420,7 +420,7 @@ const lock = (() => {
             const card = screen(`${LOGO}<h1>PlanPad schützen</h1>
                 <p class="pp-lock-text">Ab jetzt ist PlanPad beim Start gesperrt und alle Daten (Klassen, Sitzpläne, Notizen, Sterne, Fehlzeiten und Fotos) werden <b>auf diesem Gerät verschlüsselt</b> gespeichert (AES-256).</p>
                 <ul class="pp-lock-list">
-                    <li><b>PIN</b> mit wechselnder Ziffernanordnung – am Beamer nicht nachvollziehbar</li>
+                    <li><b>PIN</b> – Tasten leuchten beim Tippen nicht auf, die Länge bleibt verborgen</li>
                     <li><b>Face ID / Passkey</b> zum schnellen Entsperren (empfohlen)</li>
                     <li><b>Wiederherstellungsschlüssel</b> für den Notfall</li>
                 </ul>
