@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.46.3';
+    const VERSION = '1.46.4';
     let kvWarned = false;
     kv.onError(() => {
         if (kvWarned) return;
@@ -4527,7 +4527,33 @@ document.addEventListener('DOMContentLoaded', async () => {
                 break;
             }
         }
-        lastListColumns = { header: start ? rows[start - 1].map(x => String(x || '').trim()).filter(Boolean) : null, cls: cls >= 0, sex: sex >= 0, year: year >= 0, date: date >= 0 };
+        // ohne Kopfzeile: Zusatzspalten am Inhalt erkennen (z. B. Nachname;Vorname;Klasse;Geschlecht;Geburtsjahr;Geburtsdatum)
+        let byContent = false;
+        if (!start) {
+            const data = rows.slice(0, 200);
+            const width = Math.max(0, ...data.map(r => r.length));
+            const share = (k, test) => {
+                const vals = data.map(r => String(r[k] || '').trim()).filter(Boolean);
+                return vals.length ? vals.filter(test).length / vals.length : 0;
+            };
+            const taken = new Set([first, last]);
+            const pick = test => {
+                let best = -1, bestShare = 0.6;
+                for (let k = 0; k < width; k++) {
+                    if (taken.has(k)) continue;
+                    const sh = share(k, test);
+                    if (sh >= bestShare) { best = k; bestShare = sh; }
+                }
+                if (best >= 0) taken.add(best);
+                return best;
+            };
+            date = pick(v => Boolean(parseBirth(v)) && !/^\d{4}$/.test(v));
+            year = pick(v => /^(19|20)\d{2}$/.test(v));
+            sex = pick(v => /^(w|m|d|weiblich|männlich|divers)$/i.test(v));
+            cls = pick(v => /^(\d{1,2}\s?[a-zäöü]{0,3}\d?|q1[12]|k1[12]|q\d{2})$/i.test(v) && !/^(19|20)\d{2}$/.test(v));
+            byContent = [date, year, sex, cls].some(k => k >= 0);
+        }
+        lastListColumns = { header: start ? rows[start - 1].map(x => String(x || '').trim()).filter(Boolean) : null, byContent, cls: cls >= 0, sex: sex >= 0, year: year >= 0, date: date >= 0 };
         const cell = (r, k) => (k >= 0 ? String(r[k] || '').replace(/\s+/g, ' ').trim() : '');
         return rows.slice(start)
             .map(r => {
@@ -4569,12 +4595,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         const c = lastListColumns || {};
         const got = [c.cls && 'Klasse', c.sex && 'Geschlecht', c.date && 'Geburtsdatum', !c.date && c.year && 'Geburtsjahr'].filter(Boolean);
         const withInfo = people.filter(p => p.info).length;
-        if (got.length) return { ok: true, text: `Erkannt: ${got.join(', ')} (bei ${withInfo} von ${people.length} Kindern).` };
+        if (got.length) return { ok: true, text: `Erkannt${c.byContent ? ' (ohne Kopfzeile, am Inhalt)' : ''}: ${got.join(', ')} (bei ${withInfo} von ${people.length} Kindern).` };
         return {
             ok: false,
             text: c.header
                 ? `Klasse, Geschlecht und Geburtstag wurden nicht gefunden. Kopfzeile der Datei: „${c.header.join(' | ')}“. Erwartet werden Spalten wie „Klasse“, „Geschlecht“, „Geburtsjahr“, „Geburtsdatum“.`
-                : 'Keine Kopfzeile mit „Nachname“ und „Vorname“ gefunden – deshalb wurden nur die ersten beiden Spalten als Namen gelesen. Für Klasse, Geschlecht und Geburtstag braucht die Datei eine Kopfzeile.'
+                : 'Ohne Kopfzeile wurden die ersten beiden Spalten als Nachname und Vorname gelesen. Weitere Spalten mit Klasse (z. B. 8c), Geschlecht (W/M), Geburtsjahr oder Geburtsdatum (TT.MM.JJJJ) wurden nicht gefunden.'
         };
     }
 
@@ -4773,7 +4799,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             lines: [
                 'Spalten „Nachname“ und „Vorname“ (bzw. „Rufname“) werden automatisch erkannt.',
                 'Außerdem, falls vorhanden: „Klasse“, „Geschlecht“ (W/M), „Geburtsjahr“ und „Geburtsdatum“ (TT.MM.JJJJ).',
-                'Ohne Kopfzeile: 1. Spalte Nachname, 2. Spalte Vorname.'
+                'Ohne Kopfzeile: 1. Spalte Nachname, 2. Spalte Vorname – Klasse, Geschlecht und Geburtstag werden am Inhalt der weiteren Spalten erkannt.'
             ],
             buttons: [{ label: 'Abbrechen', value: false }, { label: 'Liste auswählen', value: true, kind: 'primary' }]
         });

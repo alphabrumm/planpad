@@ -54,6 +54,8 @@ Touchfreundlicher Sitzplan-Editor für den Unterricht. Gestaltung angelehnt an J
 - **Stammdaten aus der Klassenliste:** Neben Nachname/Vorname werden die Spalten „Klasse“, „Geschlecht“ (W/M),
   „Geburtsjahr“ und „Geburtsdatum“ (TT.MM.JJJJ, auch Excel-Datum) erkannt und je Kind gespeichert
   (`pupils` im Plan, verschlüsselt wie alles andere; wandert beim Umbenennen mit).
+  Ohne Kopfzeile (1.46.4): 1. Spalte Nachname, 2. Spalte Vorname, die übrigen Spalten werden am Inhalt erkannt
+  (Datum, vierstellige Jahreszahl, W/M, Klasse wie „8c“). Nach dem Einlesen meldet PlanPad, was erkannt wurde.
 - **Torte:** Wer heute Geburtstag hat, bekommt oben mittig auf dem Tisch eine Torte; lag der Geburtstag seit dem
   letzten Schultag am Wochenende oder in den (bayerischen) Ferien, erscheint sie am ersten Schultag ausgegraut.
 - **A–B-Ansicht:** Alter (unten links) und Klasse (unten rechts) auf jedem Tisch; rechts neben dem Pult
