@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.46.4';
+    const VERSION = '1.47.0';
     let kvWarned = false;
     kv.onError(() => {
         if (kvWarned) return;
@@ -585,10 +585,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const t = raw.trim();
             if (!t) return;
             const c = t.indexOf(',');
-            let first = t, last = '';
+            let first = t, last = '', cls = '';
             if (c >= 0) {
-                last = t.slice(0, c).trim().replace(/\s+/g, ' ');
-                first = t.slice(c + 1).trim().replace(/\s+/g, ' ');
+                // „Nachname, Vorname“ oder „Nachname, Vorname, Klasse“
+                const parts = t.split(',').map(x => x.trim().replace(/\s+/g, ' '));
+                last = parts[0];
+                first = parts[1] || '';
+                cls = parts.slice(2).filter(Boolean).join(' ').slice(0, 20);
                 if (!first) { first = last; last = ''; }
                 if (!first) return;
             }
@@ -597,19 +600,45 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (seen.has(first)) { dups.add(first); return; }
                 seen.add(first);
             }
-            people.push({ first, last });
+            people.push({ first, last, cls });
             at.push(i);
         });
         const shown = displayNamesOrdered(people);
         const perLine = lines.map(() => '');
         const firstOf = lines.map(() => '');
         const last = {};
-        shown.forEach((n, k) => { perLine[at[k]] = n; firstOf[at[k]] = people[k].first; if (people[k].last) last[n] = people[k].last; });
-        return { perLine, firstOf, list: shown, dups: [...dups], last };
+        const cls = {};
+        shown.forEach((n, k) => { perLine[at[k]] = n; firstOf[at[k]] = people[k].first; if (people[k].last) last[n] = people[k].last; if (people[k].cls) cls[n] = people[k].cls; });
+        return { perLine, firstOf, list: shown, dups: [...dups], last, cls };
     }
     /** Textfeld-Inhalt: „Nachname, Vorname“, wo der Nachname bekannt ist */
+    let classesInText = false;      // stehen die Klassen gerade als dritter Wert in der Namensliste?
     function namesText() {
-        return students.map(n => (lastNames[n] ? `${lastNames[n]}, ${firstNameOf(n)}` : n)).join('\n');
+        // Klassen nur bei gemischten Gruppen (mehrere Klassen) in der Liste zeigen
+        classesInText = mixedClasses();
+        return students.map(n => {
+            const c = classesInText ? pupilClass(n) : '';
+            if (lastNames[n]) return `${lastNames[n]}, ${firstNameOf(n)}${c ? `, ${c}` : ''}`;
+            return c ? `, ${n}, ${c}` : n;            // ohne Nachnamen: Komma davor, damit die Klasse nicht als Nachname gilt
+        }).join('\n');
+    }
+    /**
+     * Klassen aus der Namensliste übernehmen – true bei Änderung.
+     * Standen die Klassen in der Liste, heißt ein fehlender dritter Wert „Klasse entfernen“;
+     * sonst (nur eine Klasse, nicht angezeigt) bleibt die bisherige Klasse erhalten.
+     */
+    function applyClassesFromText(newCls, list) {
+        let changed = false;
+        list.forEach(n => {
+            const have = pupilClass(n);
+            const want = newCls[n] || (classesInText ? '' : have);
+            if (want === have) return;
+            changed = true;
+            const p = { ...(pupils[n] || {}) };
+            if (want) p.cls = want; else delete p.cls;
+            if (Object.keys(p).length) pupils[n] = p; else delete pupils[n];
+        });
+        return changed;
     }
     function sameLastNames(a, b) {
         const ka = Object.keys(a).filter(k => a[k]), kb = Object.keys(b).filter(k => b[k]);
@@ -638,7 +667,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         namesSession = null;
         const run = async () => {
             const lines = studentInput.value.split('\n');
-            const { perLine, firstOf, list, dups, last: newLast } = namesFromLines(lines);
+            const { perLine, firstOf, list, dups, last: newLast, cls: newCls } = namesFromLines(lines);
             const oldList = students.slice();
             const oldSet = new Set(oldList);
             const newSet = new Set(list);
@@ -657,7 +686,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             if (sameList(oldList, list) && !renames.length && !quiet.length) {
                 if (dups.join() !== duplicateNames.join()) { duplicateNames = dups; renderStudentList(); }
-                if (!sameLastNames(lastNames, newLast)) {
+                const clsChanged = applyClassesFromText(newCls, list);
+                if (clsChanged || !sameLastNames(lastNames, newLast)) {
                     lastNames = newLast;
                     if (!dups.length && document.activeElement !== studentInput) studentInput.value = namesText();
                     refreshSeatLabels();
@@ -693,6 +723,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             duplicateNames = dups;
             lastNames = newLast;
             Object.keys(pupils).forEach(n => { if (!newSet.has(n)) delete pupils[n]; });
+            applyClassesFromText(newCls, list);
             setStudents(list);
             if (!dups.length && document.activeElement !== studentInput) studentInput.value = namesText();   // einheitlich „Nachname, Vorname“
             refreshSeatLabels();
@@ -1688,7 +1719,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         return p.year ? ty - p.year : null;
     }
-    const pupilClass = name => (pupils[name] && pupils[name].cls) || '';
+    function pupilClass(name) { return (pupils[name] && pupils[name].cls) || ''; }
+    /** gemischte Gruppe: Kinder aus mehr als einer Klasse */
+    function mixedClasses() { return new Set(students.map(pupilClass).filter(Boolean)).size > 1; }
     const pupilSex = name => (pupils[name] && pupils[name].sex) || '';
     function bdayOn(birth, iso) {
         const md = birth.slice(5), imd = iso.slice(5);
@@ -1762,11 +1795,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             cake.innerHTML = icon('cake');
             sq.appendChild(cake);
         }
-        // A–B-Ansicht: Alter unten links, Klasse unten rechts
-        const labeled = Boolean(name) && sortLabels() && (pupilAge(name) != null || pupilClass(name));
+        // A–B-Ansicht: Alter unten links, Klasse unten rechts; gemischte Gruppen (mehrere Klassen): Klasse immer
+        const showAge = Boolean(name) && sortLabels() && pupilAge(name) != null;
+        const showCls = Boolean(name) && Boolean(pupilClass(name)) && (sortLabels() || mixedClasses());
+        const labeled = showAge || showCls;
         sq.classList.toggle('is-labeled', labeled);
         if (labeled) {
-            const age = pupilAge(name);
+            const age = showAge ? pupilAge(name) : null;
             if (age != null) {
                 const a = document.createElement('span');
                 a.className = 'seat-age';
@@ -1774,7 +1809,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 a.title = `${age} Jahre`;
                 sq.appendChild(a);
             }
-            if (pupilClass(name)) {
+            if (showCls) {
                 const c = document.createElement('span');
                 c.className = 'seat-cls';
                 c.textContent = pupilClass(name);

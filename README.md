@@ -49,6 +49,15 @@ Touchfreundlicher Sitzplan-Editor für den Unterricht. Gestaltung angelehnt an J
 - Gespeichert (verschlüsselt wie alles andere) unter `planpad.probe` = `{ Klassen-ID: { u, t, k, c, since, last, hash } }`;
   nicht in Sicherungsdateien. Ohne Verbindung baut PlanPad nie eine Netzverbindung auf (außer zum Laden der App).
 
+## Neu in 1.47.0
+
+- **Klasse in der Namensliste:** „Nachname, Vorname, Klasse“ – der dritte Wert ist die Klasse (ohne Nachnamen:
+  „, Vorname, 8a“). Bei gemischten Gruppen (mehr als eine Klasse) steht die Klasse standardmäßig als dritter Wert
+  in der Liste; fehlt er dort, wird die Klasse entfernt. Bei nur einer Klasse wird sie nicht angezeigt und bleibt
+  beim Bearbeiten erhalten.
+- **Gemischte Gruppen:** Das Klassen-Etikett steht auf den Tischen in allen Ansichten (Gruppen-, Notizen- und
+  A–B-Ansicht); das Alter weiterhin nur in der A–B-Ansicht.
+
 ## Neu in 1.46.0
 
 - **Stammdaten aus der Klassenliste:** Neben Nachname/Vorname werden die Spalten „Klasse“, „Geschlecht“ (W/M),
