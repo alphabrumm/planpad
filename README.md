@@ -65,6 +65,8 @@ Touchfreundlicher Sitzplan-Editor für den Unterricht. Gestaltung angelehnt an J
   automatisch zugeordnet; der Rest im Dialog: zusammenführen (Notizen, Foto, Sterne, Fehlzeiten, Platz wandern mit),
   behalten oder entfernen; neue Kinder aus der Liste kommen ohne Platz dazu.
 - **PIN:** normales Ziffernfeld 1–9, Löschen, 0, OK.
+- **Demo (1.46.1):** Klasse 8c mit Geschlecht und Geburtstagen (Platzhalter `@bd:N:A`, `@bdw:A`, `@by:A:MM-TT` relativ zu heute):
+  Emma hat immer heute Geburtstag, Leo am letzten Wochenende (ausgegraut an Montagen); Alter 13–15.
 
 ## Neu in 1.44.0
 

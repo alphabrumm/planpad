@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.46.0';
+    const VERSION = '1.46.1';
     let kvWarned = false;
     kv.onError(() => {
         if (kvWarned) return;
@@ -8049,6 +8049,22 @@ Neue und geänderte Noten gehen von selbst an Probe, sobald das Gerät online is
         if (m) return schoolDaysAgo(Math.round(-Number(m[1]) * f));
         m = v.match(/^@s(\d+)$/);
         if (m) return addSchoolDays(todayIso(), Number(m[1]));
+        // Geburtstage: @bd:N:A (in N Tagen A Jahre alt; 0 = heute), @bdw:A (am letzten Wochenende),
+        // @by:A:MM-TT (heute A Jahre alt, Geburtstag am MM-TT)
+        m = v.match(/^@bd:(-?\d+):(\d+)$/);
+        if (m) { const d = fromIso(addDays(todayIso(), Number(m[1]))); d.setFullYear(d.getFullYear() - Number(m[2])); return isoDay(d); }
+        m = v.match(/^@bdw:(\d+)$/);
+        if (m) {
+            let d = addDays(todayIso(), -1);
+            for (let k = 0; k < 7 && ![0, 6].includes(fromIso(d).getDay()); k++) d = addDays(d, -1);
+            const x = fromIso(d); x.setFullYear(x.getFullYear() - Number(m[1])); return isoDay(x);
+        }
+        m = v.match(/^@by:(\d+):(\d{2})-(\d{2})$/);
+        if (m) {
+            const t = todayIso();
+            const later = `${m[2]}-${m[3]}` > t.slice(5);
+            return `${Number(t.slice(0, 4)) - Number(m[1]) - (later ? 1 : 0)}-${m[2]}-${m[3]}`;
+        }
         m = v.match(/^@st-(\d+):(\d+):(\d+)$/);
         if (m) {
             const n = Number(m[1]);
