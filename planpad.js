@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.47.0';
+    const VERSION = '1.47.1';
     let kvWarned = false;
     kv.onError(() => {
         if (kvWarned) return;
@@ -589,10 +589,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (c >= 0) {
                 // „Nachname, Vorname“ oder „Nachname, Vorname, Klasse“
                 const parts = t.split(',').map(x => x.trim().replace(/\s+/g, ' '));
-                last = parts[0];
-                first = parts[1] || '';
-                cls = parts.slice(2).filter(Boolean).join(' ').slice(0, 20);
-                if (!first) { first = last; last = ''; }
+                if (parts.length === 2 && looksLikeClass(parts[1])) {
+                    // „Otto, 9a“: Kind ohne Nachnamen mit Klasse (ein Vorname wie „9a“ ist ausgeschlossen)
+                    first = parts[0]; last = ''; cls = parts[1];
+                } else {
+                    last = parts[0];
+                    first = parts[1] || '';
+                    cls = parts.slice(2).filter(Boolean).join(' ').slice(0, 20);
+                    if (!first) { first = last; last = ''; }
+                }
                 if (!first) return;
             }
             if (!last) {
@@ -612,6 +617,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         return { perLine, firstOf, list: shown, dups: [...dups], last, cls };
     }
     /** Textfeld-Inhalt: „Nachname, Vorname“, wo der Nachname bekannt ist */
+    /** sieht aus wie eine Klassenbezeichnung: 8a, 10 b, 5ab, Q11, K12, 7 */
+    function looksLikeClass(t) { return /^(\d{1,2}\s?[a-zäöü]{0,3}|q\s?1[12]|k\s?1[12]|q\d{2})$/i.test(String(t).trim()); }
     let classesInText = false;      // stehen die Klassen gerade als dritter Wert in der Namensliste?
     function namesText() {
         // Klassen nur bei gemischten Gruppen (mehrere Klassen) in der Liste zeigen
@@ -619,7 +626,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         return students.map(n => {
             const c = classesInText ? pupilClass(n) : '';
             if (lastNames[n]) return `${lastNames[n]}, ${firstNameOf(n)}${c ? `, ${c}` : ''}`;
-            return c ? `, ${n}, ${c}` : n;            // ohne Nachnamen: Komma davor, damit die Klasse nicht als Nachname gilt
+            return c ? (looksLikeClass(c) ? `${n}, ${c}` : `, ${n}, ${c}`) : n;   // ohne Nachnamen: „Otto, 9a“
         }).join('\n');
     }
     /**

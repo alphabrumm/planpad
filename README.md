@@ -52,7 +52,7 @@ Touchfreundlicher Sitzplan-Editor für den Unterricht. Gestaltung angelehnt an J
 ## Neu in 1.47.0
 
 - **Klasse in der Namensliste:** „Nachname, Vorname, Klasse“ – der dritte Wert ist die Klasse (ohne Nachnamen:
-  „, Vorname, 8a“). Bei gemischten Gruppen (mehr als eine Klasse) steht die Klasse standardmäßig als dritter Wert
+  „Vorname, 8a“ – ein zweiter Wert, der wie eine Klasse aussieht, gilt als Klasse, ab 1.47.1). Bei gemischten Gruppen (mehr als eine Klasse) steht die Klasse standardmäßig als dritter Wert
   in der Liste; fehlt er dort, wird die Klasse entfernt. Bei nur einer Klasse wird sie nicht angezeigt und bleibt
   beim Bearbeiten erhalten.
 - **Gemischte Gruppen:** Das Klassen-Etikett steht auf den Tischen in allen Ansichten (Gruppen-, Notizen- und
