@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.47.3';
+    const VERSION = '1.47.4';
     let kvWarned = false;
     kv.onError(() => {
         if (kvWarned) return;
@@ -1809,6 +1809,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const showCls = Boolean(name) && Boolean(pupilClass(name)) && (sortLabels() || mixedClasses());
         const labeled = showAge || showCls;
         sq.classList.toggle('is-labeled', labeled);
+        sq.classList.toggle('is-ab', labeled && sortLabels());      // A–B-Ansicht: Etiketten etwas höher (60 %)
         if (labeled) {
             const age = showAge ? pupilAge(name) : null;
             if (age != null) {

@@ -2027,6 +2027,7 @@ html.pp-locked, html.pp-locked body { overflow: hidden; }
 /* mit Foto: Etiketten über dem Namensstreifen statt darauf */
 /* Alter (links) und Klasse (rechts) bei 70 % der Tischhöhe – in allen Ansichten, mit und ohne Foto */
 .seat-age, .seat-cls { bottom: auto; top: 70%; transform: translateY(-50%); }
+.square.is-ab .seat-age, .square.is-ab .seat-cls { top: 60%; }      /* A–B: über dem zweizeiligen Namen */
 .square.has-photo.is-labeled .seat-age, .square.has-photo.is-labeled .seat-cls { background: rgba(255, 255, 255, .88); color: #2A2F3A; }
 .hide-photos .square.has-photo.is-labeled .seat-age, .hide-photos .square.has-photo.is-labeled .seat-cls { background: var(--surface-2); color: var(--ink-2); }
 @media print { .seat-cake, .seat-age, .seat-cls { display: none !important; } }
