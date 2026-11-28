@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     /* ==================================================
        Grundlagen
        ================================================== */
-    const VERSION = '1.46.2';
+    const VERSION = '1.46.3';
     let kvWarned = false;
     kv.onError(() => {
         if (kvWarned) return;
@@ -4503,13 +4503,16 @@ document.addEventListener('DOMContentLoaded', async () => {
      * Spalten finden – über eine Kopfzeile (auch unter Titelzeilen), sonst Spalte 1 und 2.
      * Erkannt werden zusätzlich Klasse, Geschlecht, Geburtsjahr und Geburtsdatum.
      */
+    /** Kopfzelle vereinheitlichen: unsichtbare Zeichen, Anführungszeichen, Leerraum, Groß-/Kleinschreibung */
+    const headNorm = t => String(t || '').replace(/[\uFEFF\u200B-\u200D\u00A0]/g, ' ').replace(/["'„“”]/g, '').replace(/\s+/g, ' ').trim().toLocaleLowerCase('de');
+    let lastListColumns = null;     // für die Rückmeldung nach dem Einlesen: erkannte Spalten + Kopfzeile
     function peopleFromRows(rows) {
-        const isLast = t => /^(nach|familien|schüler)?name$|^nachname|^familienname/i.test(t.trim());
-        const isFirst = t => /^(vorname|rufname)/i.test(t.trim());
-        const isCls = t => /^(klasse|kl\.?|lerngruppe)$|^klasse\b/i.test(t.trim());
-        const isSex = t => /^(geschlecht|geschl\.?|m\/w|w\/m|sex)/i.test(t.trim());
-        const isYear = t => /^(geburtsjahr|geb\.?\s*jahr|jahrgang)/i.test(t.trim());
-        const isDate = t => /^(geburtsdatum|geb\.?\s*datum|geburtstag|geboren)/i.test(t.trim());
+        const isLast = t => /^(nach|familien|schüler)?name$|^nachname|^familienname|^zuname/.test(headNorm(t));
+        const isFirst = t => /^(vorname|rufname)/.test(headNorm(t));
+        const isCls = t => /^(klasse|kl\.?|lerngruppe|kurs)$|^(klasse|lerngruppe)\b/.test(headNorm(t));
+        const isSex = t => /^(geschlecht|geschl\.?|m ?\/ ?w|w ?\/ ?m|sex|gender)/.test(headNorm(t));
+        const isYear = t => /^(geburts.{0,2}ahr|geb\.?[ -]*jahr|jahrgang)/.test(headNorm(t));   // auch Tippfehler wie „Geburtstahr“
+        const isDate = t => /^(geburtsdatum|geb\.?[ -]*datum|geburtstag|geboren|geb\.?$)/.test(headNorm(t));
         let last = 0;
         let first = 1;
         let cls = -1, sex = -1, year = -1, date = -1;
@@ -4524,6 +4527,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 break;
             }
         }
+        lastListColumns = { header: start ? rows[start - 1].map(x => String(x || '').trim()).filter(Boolean) : null, cls: cls >= 0, sex: sex >= 0, year: year >= 0, date: date >= 0 };
         const cell = (r, k) => (k >= 0 ? String(r[k] || '').replace(/\s+/g, ' ').trim() : '');
         return rows.slice(start)
             .map(r => {
@@ -4560,6 +4564,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
+    /** Rückmeldung: welche Zusatzspalten wurden erkannt? (Text für Hinweis/Toast) */
+    function listColumnsNote(people) {
+        const c = lastListColumns || {};
+        const got = [c.cls && 'Klasse', c.sex && 'Geschlecht', c.date && 'Geburtsdatum', !c.date && c.year && 'Geburtsjahr'].filter(Boolean);
+        const withInfo = people.filter(p => p.info).length;
+        if (got.length) return { ok: true, text: `Erkannt: ${got.join(', ')} (bei ${withInfo} von ${people.length} Kindern).` };
+        return {
+            ok: false,
+            text: c.header
+                ? `Klasse, Geschlecht und Geburtstag wurden nicht gefunden. Kopfzeile der Datei: „${c.header.join(' | ')}“. Erwartet werden Spalten wie „Klasse“, „Geschlecht“, „Geburtsjahr“, „Geburtsdatum“.`
+                : 'Keine Kopfzeile mit „Nachname“ und „Vorname“ gefunden – deshalb wurden nur die ersten beiden Spalten als Namen gelesen. Für Klasse, Geschlecht und Geburtstag braucht die Datei eine Kopfzeile.'
+        };
+    }
+
     /* ----- Bestehende Klasse erneut aus der Klassenliste einlesen (Stammdaten übernehmen, abgleichen) ----- */
     on('reload-list-btn', 'click', reloadFromList);
     async function reloadFromList() {
@@ -4577,7 +4595,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 ui.alert('Keine Namen gefunden', 'In der Datei wurden keine Vornamen gefunden. Bitte prüfe: Spalten „Nachname“ und „Vorname“ – oder ohne Kopfzeile 1. Spalte Nachname, 2. Spalte Vorname.');
                 return;
             }
+            const note = listColumnsNote(people);
             await mergeClassList(people);
+            if (!note.ok) ui.alert('Nur Namen übernommen', note.text);
+            else showToast(note.text, 'ok', 5000);
         });
         openFilePicker(input);
     }
@@ -4796,6 +4817,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const firstKey = p => p.first.toLocaleLowerCase('de');
             const shortened = people.filter(p => people.filter(o => firstKey(o) === firstKey(p)).length > 1).length;
             showToast(`${names.length} Namen übernommen und gemischt` + (shortened ? ` – ${shortened} mit Nachnamen-Kürzel, weil Vornamen doppelt waren.` : '.'), 'ok', 5000);
+            const note = listColumnsNote(people);
+            if (!note.ok) ui.alert('Nur Namen übernommen', note.text);
+            else setTimeout(() => showToast(note.text, 'ok', 5000), 5200);
         });
         openFilePicker(input);
     }
